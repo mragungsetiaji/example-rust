@@ -1,9 +1,17 @@
 use actix_web::{delete, get, post, put, HttpResponse, Responder};
+pub mod comments;
+pub mod favorites;
 
 #[get("")]
 pub async fn index() -> impl Responder {
     // TODO:
     HttpResponse::Ok().body("show_articles")
+}
+
+#[get("/feed")]
+pub async fn feed() -> impl Responder {
+    // TODO:
+    HttpResponse::Ok().body("feed of articles")
 }
 
 #[get("/{id}")]
