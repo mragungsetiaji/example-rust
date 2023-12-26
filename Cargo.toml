@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4.4.1"
-chrono = "0.4.31"
 diesel = { version = "2.1.4", features = ["r2d2", "postgres", "chrono", "uuidv07", "serde_json"] }
 dotenv = "0.15.0"
 env_logger = "0.10.1"
@@ -15,3 +14,11 @@ log = "0.4.20"
 serde = "1.0.193"
 serde_json = "1.0.108"
 uuid = "1.6.1"
+chrono = "0.4.31"
+bcrypt = { version = "0.10.1" }
+jsonwebtoken = { version = "7"}
+anyhow = { version = "1.0" }
+thiserror = { version = "1.0" }
+futures = { version = "0.3" }
+actix-service = { version = "1.0.6" }
+actix-cors = { version = "0.5.4" }

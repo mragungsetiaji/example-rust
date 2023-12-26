@@ -1,4 +1,4 @@
-pub mod articles;
-pub mod profiles;
+pub mod article;
+pub mod profile;
 pub mod tag;
 pub mod user;

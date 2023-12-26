@@ -1,0 +1,73 @@
+use crate::app::profile;
+use crate::app::user::model::User;
+use crate::AppState;
+use actix_web::{ web, HttpRequest, HttpResponse, Responder };
+
+type UsernameSlug = String;
+
+pub async fn show(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<UsernameSlug>,
+) -> impl Responder {
+    let head = req.head();
+    let extensions = head.extensions();
+    let user = extensions
+        .get::<User>()
+        .expect("couldnt get user on req extension.");
+
+    let conn = state
+        .pool
+        .get()
+        .expect("couldnt get db connection from pool");
+    let username = path.into_inner();
+    let profile = user
+        .get_profile(&conn, &username)
+        .expect("couldnt find profile by name");
+    let res = profile::response::ProfileResponse::from(profile);
+    HttpResponse::Ok().json(res)
+}
+
+pub async fn follow(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<UsernameSlug>,
+) -> impl Responder {
+    let head = req.head();
+    let extensions = head.extensions();
+    let user = extensions
+        .get::<User>()
+        .expect("couldnt get user on req extension.");
+
+    let conn = state
+        .pool 
+        .get()
+        .expect("couldnt get db connection from pool");
+    let username = path.into_inner();
+    let profile = user.follow(&conn, &username).expect("couldnt follow user");
+    HttpResponse::Ok().json(profile)
+}
+
+pub async fn unfollow(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<UsernameSlug>,
+) -> impl Responder {
+    let head = req.head();
+    let extensions = head.extensions();
+    let user = extensions
+        .get::<User>()
+        .expect("couldn't get user on req extension.");
+
+    let conn = state
+        .pool
+        .get()
+        .expect("couldn't get db connection from pool");
+
+    let username = path.into_inner();
+
+    let profile = user
+        .unfollow(&conn, &username)
+        .expect("couldn't unfollow user");
+    HttpResponse::Ok().json(profile)
+}

@@ -29,7 +29,7 @@ pub struct Tag {
 }
 
 impl Tag {
-    pub fn list(conn: &PgConnection) -> Result<Vec<Tag>, Error> {
+    pub fn list(conn: &mut PgConnection) -> Result<Vec<Tag>, Error> {
         use crate::schema;
         use diesel::prelude::*;
         use schema::tags::dsl::*;
