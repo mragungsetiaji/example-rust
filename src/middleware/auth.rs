@@ -96,6 +96,10 @@ where
                 Ok(res)
             })
         } else {
+            // This code is creating a Future that, when awaited, will return an HTTP response 
+            // with a status of Unauthorized. The async move block is an asynchronous closure 
+            // that takes ownership of its environment (in this case, req), and Box::pin is used 
+            // to pin this Future in memory.
             Box::pin(async move {
                 Ok(req.into_response(
                     HttpResponse::Unauthorized()
