@@ -2,11 +2,9 @@ use super::model::{Article, NewArticle, UpdateArticle};
 use super::service;
 use super::{ request, response };
 use crate::app::article::tag::model::{ NewTag, Tag };
-use crate::app::user::model::User;
+use crate::middleware::auth;
 use crate::AppState;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
-use convert_case::{Case, Casing};
-use diesel::Insertable;
 use uuid::Uuid;
 
 type ArticleIdSlug = Uuid;
@@ -31,9 +29,7 @@ pub async fn create(
     req: HttpRequest,
     form: web::Json<request::CreateArticleRequest>,
 ) -> Result<HttpResponse, HttpResponse> {
-    let head = req.head();
-    let extensions = head.extensions();
-    let auth_user = extensions.get::<User>().expect("invaild user").clone();
+    let auth_user = auth::access_auth_user(&req).expect("invaild user");
 
     let conn = state
         .pool
@@ -51,7 +47,7 @@ pub async fn create(
         &form.article.tagList,
     );
 
-    let res = response::SingleArticleResponse::from(article, auth_user, tag_list);
+    let res = response::SingleArticleResponse::from(article, auth_user.clone(), tag_list);
     Ok(HttpResponse::Ok().json(res))
 }
 
@@ -61,9 +57,7 @@ pub async fn update(
     path: web::Path<ArticleIdSlug>,
     form: web::Json<request::UpdateArticleRequest>,
 ) -> impl Responder {
-    let head = req.head();
-    let extensions = head.extensions();
-    let auth_user = extensions.get::<User>().expect("invaild user").clone();
+    let auth_user = auth::access_auth_user(&req).expect("invaild user");
     
     let conn = state
         .pool
@@ -99,9 +93,7 @@ pub async fn delete(
     req: HttpRequest,
     path: web::Path<ArticleIdSlug>,
 ) -> impl Responder {
-    let head = req.head();
-    let extensions = head.extensions();
-    let auth_user = extensions.get::<User>().expect("invaild user").clone();
+    let auth_user = auth::access_auth_user(&req).expect("invaild user");
 
     let conn = state
         .pool

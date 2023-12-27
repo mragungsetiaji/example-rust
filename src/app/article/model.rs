@@ -1,12 +1,29 @@
+use crate::app::user::model::User;
+use crate::schema::articles;
+use crate::schema::articles::dsl::*;
+use crate::utils::converter;
+
 use chrono::NaiveDateTime;
 use diesel::pg::PgConnection;
+use diesel::prelude::*;
 use diesel::Insertable;
 use serde::{
     Deserialize, Serialize
 };
 use uuid::Uuid;
 
-#[derive(Queryable, Debug, Serialize, Deserialize, Clone)]
+// Identifiable
+// This trait is used to mark a struct as representing a single row 
+// in a database table. This trait requires that your struct has 
+// a field named id or a tuple of fields which together form 
+// a composite primary key. The id field is typically of 
+// type i32 or Uuid and is often auto-incremented by the database. 
+// By deriving Identifiable, you can use methods provided 
+// by Diesel that require the struct to be identifiable by 
+// a unique key.
+#[derive(Identifiable, Queryable, Debug, Serialize, Deserialize, Associations)]
+#[belongs_to(User, foreign_key = "author_id")]
+#[table_name = "articles"]
 pub struct Article {
     pub id: Uuid,
     pub author_id: Uuid,
@@ -17,11 +34,6 @@ pub struct Article {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
-
-use crate::schema::articles;
-use crate::schema::articles::dsl::*;
-use crate::utils::converter;
-use diesel::prelude::*;
 
 impl Article {
     pub fn create(conn: &PgConnection, record: &NewArticle) -> Self {
