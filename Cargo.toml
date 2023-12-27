@@ -22,3 +22,6 @@ thiserror = { version = "1.0" }
 futures = { version = "0.3" }
 actix-service = { version = "1.0.6" }
 actix-cors = { version = "0.5.4" }
+
+# convert link into any case
+convert_case = { version = "0.4.0"}
