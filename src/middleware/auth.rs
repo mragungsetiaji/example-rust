@@ -15,6 +15,7 @@ use futures::Future;
 
 use crate::app::user::model::User;
 use crate::constants;
+use crate::middleware;
 use crate::utils::token;
 use crate::AppState;
 
@@ -103,7 +104,9 @@ where
             Box::pin(async move {
                 Ok(req.into_response(
                     HttpResponse::Unauthorized()
-                        .json({})
+                        .json(middleware::error::ErrorResponse::from(
+                            "Unauthorized".to_string(),
+                        ))
                         .into_body(),
                 ))
             })

@@ -1,17 +1,67 @@
 use super::model::{Article, NewArticle, UpdateArticle};
 use super::service;
 use super::{ request, response };
-use crate::app::article::tag::model::{ NewTag, Tag };
+use crate::app::article::tag::model::Tag;
+use crate::app::user::model::User;
 use crate::middleware::auth;
+use crate::schema::users;
 use crate::AppState;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use diesel::associations::HasTable;
 use uuid::Uuid;
 
 type ArticleIdSlug = Uuid;
 
-pub async fn index() -> impl Responder {
-    // TODO:
-    HttpResponse::Ok().body("show_articles")
+pub async fn index(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+) -> impl Responder {
+    let auth_user = auth::access_auth_user(&req).expect("invaild user");
+    let conn = state
+        .pool
+        .get()
+        .expect("couldn't get db connection from pool");
+    let offset = 0;
+    let limit = 20;
+
+    let (articles_list, articles_count) = {
+        use crate::schema::articles::dsl::*;
+        use diesel::prelude::*;
+
+        let articles_and_user_list = articles
+            .inner_join(users::table)
+            .offset(offset)
+            .limit(limit)
+            .get_results::<(Article, User)>(&conn)
+            .expect("Error loading articles");
+
+        let articles_list = article_and_user_list
+            .clone()
+            .into_iter()
+            .map(|(article, _)| article)
+            .collect::<Vec<_>>();
+        let tags_list = Tag::belonging_to(&articles_list)
+            .load::<Tag>(&conn)
+            .expect("Error loading tags");
+        let tags_list = tags_list
+            .grouped_by(&articles_list)
+        let articles_list = article_and_user_list 
+            .into_iter()
+            .zip(tags_list)
+            .collect::<Vec<_>>();
+        let articles_count = articles
+            .select(diesel::dsl::count(id))
+            .first::<i64>(&conn)
+            .expect("Error loading articles count");
+
+        (articles_list, articles_count)
+    };
+    let res = response::MultipleArticlesResponse::from(
+        articles_list,
+        articles_count,
+    );
+
+    HttpResponse::Ok().json(res)
 }
 
 pub async fn feed() -> impl Responder {

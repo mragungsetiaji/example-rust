@@ -1,6 +1,6 @@
 use crate::app::user::model::User;
-use crate::schema::articles;
 use crate::schema::articles::dsl::*;
+use crate::schema::articles;
 use crate::utils::converter;
 
 use chrono::NaiveDateTime;
@@ -21,7 +21,7 @@ use uuid::Uuid;
 // By deriving Identifiable, you can use methods provided 
 // by Diesel that require the struct to be identifiable by 
 // a unique key.
-#[derive(Identifiable, Queryable, Debug, Serialize, Deserialize, Associations)]
+#[derive(Identifiable, Queryable, Debug, Serialize, Deserialize, Associations, Clone)]
 #[belongs_to(User, foreign_key = "author_id")]
 #[table_name = "articles"]
 pub struct Article {

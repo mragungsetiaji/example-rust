@@ -1,3 +1,4 @@
+use crate::app::article::model::Article;
 use crate::schema::tags;
 use chrono::NaiveDateTime;
 use diesel::pg::PgConnection;
@@ -5,6 +6,9 @@ use diesel::result::Error;
 use diesel::Insertable;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+use crate::schema::*;
+use diesel::*;
 
 // derive is an attribute that generates code for certain traits. 
 // It allows you to automatically implement commonly used traits 
@@ -21,7 +25,9 @@ use uuid::Uuid;
 // Deserialize: This trait also comes from the Serde crate 
 // and allows the struct to be deserialized from a format 
 // such as JSON.
-#[derive(Queryable, Debug, Serializem Deserialize)]
+#[derive(Identifiable, Queryable, Debug, Serializem Deserialize, Associations)]
+#[belongs_to(Article, foreign_key = "article_id")]
+#[table_name = "tags"]
 pub struct Tag {
     pub id: Uuid,
     pub article_id: Uuid,
