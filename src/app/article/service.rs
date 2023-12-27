@@ -1,6 +1,5 @@
 use crate::app::article::model::{Article, NewArticle};
 use crate::app::article::tag::model::{NewTag, Tag};
-use crate::app::user::model::User;
 use diesel::pg::PgConnection;
 
 pub fn create(
@@ -25,4 +24,20 @@ pub fn create(
     };
 
     (article, tag_list)
+}
+
+fn create_tag_list(conn: &PgConnection, tag_list: &Option<Vec<String>>) -> Vec<Tag> {
+    tag_list
+        .as_ref()
+        .map(|tag_list| {
+            let records = tag_list
+                .iter()
+                .map(|tag| NewTag {
+                    name: &tag,
+                    article_id: &article.id,
+                })
+                .collect();
+            Tag::create(&conn, records);
+        })
+        .unwrap_or(vec![])
 }
