@@ -1,13 +1,9 @@
 use super::model::{Article, NewArticle, UpdateArticle};
 use super::service;
 use super::{ request, response };
-use crate::app::article::tag::model::Tag;
-use crate::app::user::model::User;
 use crate::middleware::auth;
-use crate::schema::{ aeticles, tags, users };
 use crate::AppState;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
-use diesel::associations::HasTable;
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -43,65 +39,18 @@ pub async fn index(
     let limit = params.limit.unwrap_or(20);
 
     let (articles_list, articles_count) = {
-        use diesel::prelude::*;
-
-        let article_and_user_list = {
-            let mut query = articles::table.inner_join(users::table).into_boxed();
-            if let Some(tag_name) &params.tag {
-                let tagged_article_ids = tags::table
-                    .filter(tags::name.eq(tag_name))
-                    .select(tags::articles_id)
-                    .load::<Uuid>(&conn)
-                    .expect("Error loading tagged article ids");
-                query = query.filter(articles::id.eq_any(tagged_article_ids));
-            }
-
-            if let Some(author_name) = &params.author {
-                let article_ids_by_author = users::table
-                    // Note: add username index to users table since we are filtering by username
-                    // here. and we are joining articles table with users table. using inner_join
-                    .inner_join(articles::table)
-                    .filter(users::username.eq(author_name))
-                    .select(users::id)
-                    .load::<Uuid>(&conn)
-                    .expect("Error loading article ids by author");
-                query = query.filter(articles::id.eq_any(article_ids_by_author));
-            }
-
-            if let Some(favorited) = &params.favorited {
-                // TODO: implement
-            }
-
-            query
-                .offset(offset)
-                .limit(limit)
-                .load::<(Article, User)>(&conn)
-                .expect("Error loading articles and users")
-            }
-
-        let articles_list = article_and_user_list
-            .clone()
-            .into_iter()
-            .map(|(article, _)| article)
-            .collect::<Vec<_>>();
-        let tags_list = Tag::belonging_to(&articles_list)
-            .load::<Tag>(&conn)
-            .expect("Error loading tags");
-        let tags_list = tags_list
-            .grouped_by(&articles_list)
-        let articles_list = article_and_user_list 
-            .into_iter()
-            .zip(tags_list)
-            .collect::<Vec<_>>();
-        let articles_count = {
-            use crate::schema::articles;
-            use crate::schema::articles::dsl::*;
-
-            articles
-                .select(diesel::dsl::count(articles::id))
-                .first::<i64>(&conn)
-                .expect("Error loading articles count");
-        };
+        let articles_list = service::fetch_articles_list(
+            &conn,
+            &service::FetchArticlesList {
+                tag: params.tag.clone(),
+                author: params.author.clone(),
+                favorited: params.favorited.clone(),
+                offset,
+                limit,
+            },
+        );
+        
+        let articles_count = service::fetch_articles_count(&conn);
 
         (articles_list, articles_count)
     };
