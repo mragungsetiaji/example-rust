@@ -150,23 +150,13 @@ impl User {
         Ok(profile)
     }
 
-    pub fn get_profile(&self, conn: &PgConnection, _username: &str) -> Result<Profile> {
-        let user = User::find_by_username(&conn, &_username).expect("failed to find user by username");
-        let following = {
-            use crate::schema::follows::dsl::*;
-            follows
-                .filter(follower_id.eq(self.id))
-                .filter(followee_id.eq(user.id))
-                .get_result::<Follow>(conn);
-            follow.is_ok()
-        };
-        let profile = Profile {
-            username: user.username,
-            bio: user.bio,
-            image: user.image,
-            following: following,
-        };
-        Ok(profile)
+    pub fn is_following(&self, conn: &PgConnection, _followee_id: &Uuid) -> bool {
+        use crate::schema::follows::dsl::*;
+        let follow = follows
+            .filter(follower_id.eq(self.id))
+            .filter(followee_id.eq(_followee_id))
+            .get_result::<Follow>(conn);
+        follow.is_ok()
     }
 }
 

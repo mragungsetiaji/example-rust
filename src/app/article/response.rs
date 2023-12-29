@@ -1,5 +1,5 @@
 use crate::app::article::model::Article;
-use crate::app::article::tag::model::Tag;
+use crate::app::tag::model::Tag;
 use crate::app::user::model::User;
 use serde::{Deserialize, Serialize};
 
@@ -11,9 +11,32 @@ pub struct SingleArticleResponse {
 }
 
 impl SingleArticleResponse {
-    pub fn from(article: Article, author: User, tag_list: Vec<Tag>) -> Self {
+    pub fn from(article: Article, profile: Profile, tag_list: Vec<Tag>) -> Self {
         Self {
-            article::ArticleContent::from(article, user, tag_list),
+            article::ArticleContent {
+                slug: article.slug,
+                title: article.title,
+                description: article.description,
+                body: article.body,
+                tag_list: tag_list
+                    .iter()
+                    .map(move |tag| tag.name.to_owned())
+                    .collect(),
+                created_at: article.created_at.to_string(),
+                updated_at: article.updated_at.to_string(),
+                author: AuthorContent {
+                    username: profile.username,
+                    bio: profile.bio,
+                    image: profile.image,
+                    following: profile.following,
+                },
+            },
+        }
+    }
+
+    pub fn DEPRECATED_from(article: Article, user: User, tag_list: Vec<Tag>) -> Self {
+        Self {
+            article: ArticleContent::DEPRECATED_from(article, user, tag_list),
         }
     }
 }
@@ -30,7 +53,7 @@ impl MultipleArticlesResponse {
         let articles = inf
             .iter()
             .map(|((article, user), tag_list)| {
-                ArticleContent::from(
+                ArticleContent::DEPRECATED_from(
                     article.to_owned(), 
                     user.clone(), 
                     tag_list.to_owned(),
@@ -65,7 +88,7 @@ pub struct AuthorContent {
 }
 
 impl ArticleContent {
-    pub fn from(article: Article, user: User, tag_list: Vec<Tag>) -> Self {
+    pub fn DEPRECATED_from(article: Article, user: User, tag_list: Vec<Tag>) -> Self {
         Self {
             slug: article.slug,
             title: article.title,
@@ -74,6 +97,12 @@ impl ArticleContent {
             tag_list: tag_list.iter().map(move |tag| tag.name.clone()).collect(),
             created_at: article.created_at.to_string(),
             updated_at: article.updated_at.to_string(),
+            author: AuthorContent {
+                username: user.username,
+                bio: user.bio,
+                image: user.image,
+                following: true,
+            },
         }
     }
 }
