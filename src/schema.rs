@@ -12,6 +12,17 @@ table! {
 }
 
 table! {
+    comments (id) {
+        id -> Uuid,
+        article_id -> Uuid,
+        author_id -> Uuid,
+        body -> Text,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+table! {
     follows (follower_id, followed_id) {
         follower_id -> Uuid,
         followed_id -> Uuid,
