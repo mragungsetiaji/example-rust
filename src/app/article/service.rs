@@ -1,7 +1,7 @@
-use crate::app::article::model::{Article, NewArticle};
+use crate::app::article::model::{Article, NewArticle, UpdateArticle};
 use crate::app::profile;
 use crate::app::profile::model::Profile;
-use crate::app::profile::service::FetchProfileById;
+use crate::app::profile::service::{fetch_profile_by_id, FetchProfileById};
 use crate::app::tag::model::{NewTag, Tag};
 use crate::app::user::model::User;
 use crate::schema::articles::dsl::*;
@@ -10,28 +10,39 @@ use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use uuid::Uuid;
 
+pub struct CreateArticleService {
+    pub author_id: Uuid,
+    pub slug: String,
+    pub titleL String,
+    pub description: String,
+    pub body: String,
+    pub tag_list: Option<Vec<String>>,
+    pub me: User,
+}
+
 pub fn create(
     conn: &PgConnection,
-    new_article: &NewArticle,
-    tag_list: &Option<Vec<String>>,
-) -> (Article, Vec<Tag>) {
-    let article = Article::create(&conn, &new_article);
-    let tag_list = match tag_list {
-        Some(tag_list) => {
-            let tag_list = tag_list
-                .iter()
-                .map(|tag| NewTag {
-                    name: &tag,
-                    article_id: &article.id,
-                })
-                .collect();
-            let tag_list = Tag::create(&conn, tag_list);
-            tag_list
+    params: &CreateArticleService
+) -> (Article, Profile, Vec<Tag>) {
+    let article = Article::create(
+        &conn, 
+        &NewArticle{
+            author_id: params.author_id,
+            slug: params.slug.to_owned(),
+            title: params.title.to_owned(),
+            description: params.description.to_owned(),
+            body: params.body.to_owned(),
         },
-        None => vec![],
-    };
-
-    (article, tag_list)
+    );
+    let tag_list = create_tag_list(&conn, &params.tag_list, &article);
+    let profile = profile::service::fetch_profile_by_id(
+        &conn,
+        &FetchProfileById {
+            me: params.me.to_owned(),
+            id: article.author_id,
+        },
+    );
+    (article, profile, tag_list)
 }
 
 fn create_tag_list(
@@ -49,7 +60,7 @@ fn create_tag_list(
                     article_id: &article.id,
                 })
                 .collect();
-            Tag::create(&conn, records);
+            Tag::create_list(&conn, records);
         })
         .unwrap_or(vec![])
 }
@@ -218,4 +229,39 @@ pub fn fetch_following_articles(
         .expect("failed to fetch articles count."); 
 
     (articles_list, articles_count)
+}
+
+pub struct UpdateArticleService{
+    pub me: User,
+    pub article_id: Uuid,
+    pub slug: Option<String>,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub body: Option<String>,
+}
+
+pub fn update_article(
+    conn: &PgConnection, 
+    params: &UpdateArticleService
+) -> (Article, Profile, Vec<Tag>) {
+    let article = Article::update(
+        &conn,
+        &params.article_id,
+        &UpdateArticle {
+            slug: params.slug.to_owned(),
+            title: params.title.to_owned(),
+            description: params.description.to_owned(),
+            body: params.body.to_owned(),
+        },
+    );
+
+    let tag_list = Tag::fetch_list_by_article_id(&conn, params.article_id);
+    let profile = profile::service::fetch_profile_by_id(
+        &conn,
+        &FetchProfileById {
+            me: params.me.to_owned(),
+            id: article.author_id,
+        },
+    );
+    (article, profile, tag_list)
 }

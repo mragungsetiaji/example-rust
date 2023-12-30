@@ -36,7 +36,19 @@ pub struct Tag {
 }
 
 impl Tag {
-    pub fn list(conn: &mut PgConnection) -> Result<Vec<Tag>, Error> {
+
+    pub fn fetch_list_by_article_id(conn: &PgConnection, _article_id: &Uuid) -> Vec<Self> {
+        use crate::schema::tags;
+        use crate::schema::tags::dsl::*;
+        use diesel::prelude::*;
+        let list = tags
+            .filter(tags::article_id.eq(_article_id))
+            .get_results::<Self>(conn)
+            .expect("Error loading tags");
+        list
+    }
+
+    pub fn list(conn: &mut PgConnection) -> Result<Vec<Self>, Error> {
         use crate::schema;
         use diesel::prelude::*;
         use schema::tags::dsl::*;
@@ -45,7 +57,7 @@ impl Tag {
         list
     }
 
-    pub fn create(conn: &PgConnection, records: Vec<NewTag>) -> Vec<Tag> {
+    pub fn create_list(conn: &PgConnection, records: Vec<NewTag>) -> Vec<Self> {
         use crate::diesel::RunQueryDsl;
         use crate::schema::tags::dsl::*;
         let tags_list = diesel::insert_into(tags)

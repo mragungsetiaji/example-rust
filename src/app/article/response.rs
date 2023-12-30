@@ -18,7 +18,7 @@ impl std::convert::From<(Article, Profile, Vec<Tag>)> for SingleArticleResponse 
                 title: article.title,
                 description: article.description,
                 body: article.body,
-                tag_list: tag_list
+                tagList: tag_list
                     .iter()
                     .map(move |tag| tag.name.to_owned())
                     .collect(),
@@ -31,14 +31,6 @@ impl std::convert::From<(Article, Profile, Vec<Tag>)> for SingleArticleResponse 
                     following: profile.following,
                 },
             },
-        }
-    }
-}
-
-impl SingleArticleResponse {
-    pub fn DEPRECATED_from(article: Article, user: User, tag_list: Vec<Tag>) -> Self {
-        Self {
-            article: ArticleContent::DEPRECATED_from(article, user, tag_list),
         }
     }
 }
@@ -75,7 +67,7 @@ pub struct ArticleContent {
     pub title: String,
     pub description: String,
     pub body: String,
-    pub tag_list: Vec<String>,
+    pub tagList: Vec<String>,
     pub created_at: String,
     pub updated_at: String,
     pub author: AuthorContent,
@@ -96,7 +88,7 @@ impl ArticleContent {
             title: article.title,
             description: article.description,
             body: article.body,
-            tag_list: tag_list.iter().map(move |tag| tag.name.clone()).collect(),
+            tagList: tag_list.iter().map(move |tag| tag.name.clone()).collect(),
             created_at: article.created_at.to_string(),
             updated_at: article.updated_at.to_string(),
             author: AuthorContent {

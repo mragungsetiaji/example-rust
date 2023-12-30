@@ -134,19 +134,20 @@ pub async fn create(
         .pool
         .get()
         .expect("couldn't get db connection from pool");
-    let (article, tag_list) = service::create(
+    let (article, profile, tag_list) = service::create(
         &conn,
-        &NewArticle {
+        &service::CreateArticleService {
             author_id: auth_user.id,
             title: form.article.title.clone(),
             slug: Article::convert_title_to_slug(&form.article.title),
             description: form.article.description.clone(),
             body: form.article.body.clone(),
+            tag_list: form.article.tagList.to_owned(),
+            me: auth_user,
         },
-        &form.article.tagList,
     );
 
-    let res = response::SingleArticleResponse::from(article, auth_user.clone(), tag_list);
+    let res = response::SingleArticleResponse::from((article, profile, tag_list));
     Ok(HttpResponse::Ok().json(res))
 }
 
@@ -163,26 +164,26 @@ pub async fn update(
         .get()
         .expect("couldn't get db connection from pool");
     let article_id = path.into_inner();
-    let (article, tag_list) = {
-        let new_slug = &form
-            .article
-            .title
-            .as_ref()
-            .map(|_title| Article::convert_title_to_slug(_title))
-        let article = Article::update(
-            &conn,
-            &article_id,
-            &UpdateArticle {
-                slug: new_slug.to_owned(),
-                title: form.article.title.clone(),
-                description: form.article.description.clone(),
-                body: form.article.body.clone(),
-            },
-        );
-        let tag_list = vec![];
-        (article, tag_list)
+    
+    let article_slug = &form
+        .article
+        .title 
+        .as_ref()
+        .map(|_title| Article::convert_title_to_slug(title));
     }
-    let res = response::SingleArticleResponse::from(article, auth_user, tag_list);
+
+    let (article, profile, tag_list) = service::update_article(
+        &conn,
+        &service::UpdateArticleService {
+            me: auth_user,
+            article_id,
+            slug: article_slug.to_owned(),
+            title: form.article.title.clone(),
+            description: form.article.description.clone(),
+            body: form.article.body.clone(),
+        },
+    )
+    let res = response::SingleArticleResponse::from((article, profile, tag_list));
     
     HttpResponse::Ok().json(res)
 }
