@@ -1,7 +1,7 @@
 
 use crate::service;
 use crate::app::profile;
-use crate::app::user::model::User;
+use crate::middleware::auth::access_auth_user;
 use crate::AppState;
 use actix_web::{ web, HttpRequest, HttpResponse, Responder };
 
@@ -12,12 +12,8 @@ pub async fn show(
     req: HttpRequest,
     path: web::Path<UsernameSlug>,
 ) -> impl Responder {
-    let head = req.head();
-    let extensions = head.extensions();
-    let me = extensions
-        .get::<User>()
-        .expect("couldnt get user on req extension.");
-
+    
+    let me = access_auth_user(&req).expect("invalid user");
     let conn = state
         .pool
         .get()
@@ -40,12 +36,8 @@ pub async fn follow(
     req: HttpRequest,
     path: web::Path<UsernameSlug>,
 ) -> impl Responder {
-    let head = req.head();
-    let extensions = head.extensions();
-    let user = extensions
-        .get::<User>()
-        .expect("couldnt get user on req extension.");
-
+    
+    let user = access_auth_user(&req).expect("invalid user");
     let conn = state
         .pool 
         .get()
@@ -60,12 +52,8 @@ pub async fn unfollow(
     req: HttpRequest,
     path: web::Path<UsernameSlug>,
 ) -> impl Responder {
-    let head = req.head();
-    let extensions = head.extensions();
-    let user = extensions
-        .get::<User>()
-        .expect("couldn't get user on req extension.");
 
+    let user = access_auth_user(&req).expect("invalid user");
     let conn = state
         .pool
         .get()

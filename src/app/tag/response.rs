@@ -6,8 +6,8 @@ pub struct TagResponse {
     pub tags: Vec<String>,
 }
 
-impl TagsResponse {
-    pub fn from_tags(tags: Vec<Tag>) -> Self {
+impl std::convert::From<Vec<Tag>> for TagsResponse {
+    fn from(tags: Vec<Tag>) -> Self {
 
         // This line creates an iterator over tags, transforms each Tag 
         // into its name field using the map method, and then collects 

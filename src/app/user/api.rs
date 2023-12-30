@@ -27,7 +27,8 @@ pub async fn signin(
                 HttpResponse::InternalServerError().json(e.to_string())
             // The ? operator is then used to return early if an error occurred.
             })?;
-    let res = response::UserResponse::from(user, token);
+
+    let res = response::UserResponse::from((user, token));
     HttpResponse::Ok().body("users signin")
 }
 
@@ -58,7 +59,7 @@ pub async fn me(req: HttpRequest) -> Result<HttpResponse, HttpResponse> {
     let user = auth::access_auth_user(&req);
 
     if let Some(user) = user {
-        let user = response::UserResponse::from(user.to_owned(), user.generate_token());
+        let user = response::UserResponse::from((user.to_owned(), user.generate_token()));
         Ok(HttpResponse::Ok().json(user));
     } else {
         Ok(HttpResponse::Ok().json({}))
@@ -91,7 +92,6 @@ pub async fn update(
         })?;
     
     let token = &user.generate_token();
-    let res = response::UserResponse::from(user, token.to_string());
-
+    let res = response::UserResponse::from((user, token.to_string()));
     Ok(HttpResponse::Ok().json(res))
 }

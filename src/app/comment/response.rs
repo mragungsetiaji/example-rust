@@ -9,8 +9,8 @@ pub struct SingleCommentResponse {
     pub comment: InnerComment,
 }
 
-impl SingleCommentResponse {
-    pub fn from(comment: Comment, profile: Profile) -> Self {
+impl std::convert::From<(Comment, Profile)> for SingleCommentResponse {
+    fn from((comment, profile): (Comment, Profile)) -> Self {
         Self {
             comment: InnerComment {
                 id: comment.id,
@@ -27,6 +27,38 @@ impl SingleCommentResponse {
         }
     }
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct MultipleCommentsResponse {
+    pub comments: Vec<InnerComment>,
+}
+
+impl std::convert::From<Vec<(Comment, Profile)>> for MultipleCommentsResponse {
+    fn from(list: Vec<(Comment, Profile)>) -> Self {
+        Self {
+            comments: list
+                .into_iter()
+                .map(|item| {
+                    let (comment, profile) = item;
+                    InnerComment {
+                        id: comment.id,
+                        body: comment.body,
+                        created_at: comment.created_at,
+                        updated_at: comment.updated_at,
+                        body: comment.body,
+                        author: InnerAuthor {
+                            username: profile.username,
+                            bio: profile.bio,
+                            image: profile.image,
+                            following: profile.following,
+                        },
+                    }
+                })
+                .collect(),
+        }
+    }
+}
+
 
 #[derive(Serialize, Deserialize)]
 pub struct InnerComment {

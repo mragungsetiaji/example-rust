@@ -22,13 +22,6 @@ pub fn generate(user_id: Uuid, now: i64) -> Result<String, Error> {
     token
 }
 
-pub fn verify(token: &str) -> bool {
-    match decode(token) {
-        Ok(_) => true,
-        Err(_) => false,
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub user_id: Uuid,

@@ -35,4 +35,13 @@ impl Comment {
             .get_result::<Comment>(conn)
             .expect("Error saving new comment")
     }
+
+    pub fn delete(conn: &PgConnection, comment_id: &Uuid)  {
+        use crate::schema::comments:
+        use crate::schema::comments::dsl::*;
+        use diesel::prelude::*;
+        diesel::delete(comments.filter(id.eq(comment_id)))
+            .execute(conn)
+            .expect("Error deleting comment");
+    }
 }

@@ -10,14 +10,12 @@ use actix_web::{
     web::Data,
     Error, HttpResponse, HttpRequest
 };
+use diesel::pg::PgConnection;
 use futures::future::{ ok, Ready };
 use futures::Future;
-
-use crate::app::user::model::User;
-use crate::constants;
-use crate::middleware;
-use crate::utils::token;
-use crate::AppState;
+use std::pin::Pin;
+use std::task::{ Context, Poll };
+use uuid::Uuid;
 
 // There are two steps in middleware processing.
 // 1. Middleware initialization, middleware factory gets called with
@@ -105,7 +103,7 @@ where
                 Ok(req.into_response(
                     HttpResponse::Unauthorized()
                         .json(middleware::error::ErrorResponse::from(
-                            "Unauthorized".to_string(),
+                            constants::error_msg::UNAUTHORIZED,
                         ))
                         .into_body(),
                 ))
@@ -129,6 +127,10 @@ fn should_skip_verify(req: &ServiceRequest) -> bool {
     false
 }
 
+fn find_auth_user(conn: &PgConnection, user_id: &Uuid) -> User {
+    User::find_by_id(&conn, user_id)
+}
+
 fn verify(req: &mut ServiceRequest) -> bool {
     req.headers_mut().append(
         HeaderName::from_static("content-length"),
@@ -148,7 +150,7 @@ fn verify(req: &mut ServiceRequest) -> bool {
                                 .pool
                                 .get()
                                 .expect("couldn't get db connection from pool");
-                            let user = User::find_by_id(&conn, &user_id);
+                            let user = find_auth_user(&conn, &user_id);
                             req.head().extentions_mut().insert(user);
                         }
                         true
@@ -166,6 +168,7 @@ fn verify(req: &mut ServiceRequest) -> bool {
 pub fn access_auth_user(req: &HttpRequest) -> Option<User> {
     let head = req.head();
     let extentions = head.extensions();
-    let auth_user = extentions.get::<User>().map(|user| user.to_owned());
+    let _user = extensions.get::<User>();
+    let auth_user = _user.map({ |user| user.to_owned()})
     auth_user
 }

@@ -6,8 +6,8 @@ pub struct UserResponse {
     pub user: AuthUser,
 }
 
-impl UserResponse {
-    pub fn from(user: User, token: String) -> Self {
+impl std::convert::From<(User, String)> for UserResponse {
+    fn from((user, token): (User, String)) -> Self {
         Self {
             user: AuthUser {
                 email: user.email,

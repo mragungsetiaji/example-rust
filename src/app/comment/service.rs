@@ -30,3 +30,32 @@ pub fn create(conn: &PgConnection, params: &CreateCommentService) -> Comment {
     );
     (comment, profile)
 }
+
+pub fn fetch_comments_list(conn: &PgConnection, user: &User) -> Vec<(Comment, Profile)> {
+    use crate::schema::comments;
+    use crate::schema::comments::dsl::*;
+    use crate::schema::follows;
+    use crate::schema::users;
+    use diesel::prelude::*;
+    let _comments = comments
+        .inner_join(users::table)
+        .filter(comments::article_id.eq(article_id))
+        .get_result::<(Comment, User)>(conn)
+        .expect("Error loading comments");
+    
+    let _comments = _comments
+        .into_iter()
+        .map(|_comment, user| {
+            let profile = fetch_profile_by_id(
+                &conn,
+                &FetchProfileById {
+                    me: user.to_owned(),
+                    id: _user.id,
+                },
+            );
+            (_comment.to_owned(), profile)
+        })
+        .collect::<Vec<(Comment, Profile)>>();
+
+    _comments
+}

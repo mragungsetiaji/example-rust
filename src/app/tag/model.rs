@@ -1,14 +1,13 @@
 use crate::app::article::model::Article;
 use crate::schema::tags;
+use crate::schema::*;
 use chrono::NaiveDateTime;
 use diesel::pg::PgConnection;
 use diesel::result::Error;
 use diesel::Insertable;
+use diesel::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-use crate::schema::*;
-use diesel::*;
 
 // derive is an attribute that generates code for certain traits. 
 // It allows you to automatically implement commonly used traits 
@@ -42,9 +41,7 @@ impl Tag {
         use diesel::prelude::*;
         use schema::tags::dsl::*;
 
-        let list = tags
-            .limit(5)
-            .load::<Tag>(conn);
+        let list = tags.load::<Tag>(conn);
         list
     }
 

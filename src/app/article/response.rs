@@ -10,8 +10,8 @@ pub struct SingleArticleResponse {
     pub article: ArticleContent,
 }
 
-impl SingleArticleResponse {
-    pub fn from(article: Article, profile: Profile, tag_list: Vec<Tag>) -> Self {
+impl std::convert::From<(Article, Profile, Vec<Tag>)> for SingleArticleResponse {
+    fn from((article, profile, tag_list): (Article, Profile, Vec<Tag>)) -> Self {
         Self {
             article::ArticleContent {
                 slug: article.slug,
@@ -33,7 +33,9 @@ impl SingleArticleResponse {
             },
         }
     }
+}
 
+impl SingleArticleResponse {
     pub fn DEPRECATED_from(article: Article, user: User, tag_list: Vec<Tag>) -> Self {
         Self {
             article: ArticleContent::DEPRECATED_from(article, user, tag_list),
@@ -48,8 +50,8 @@ pub struct MultipleArticlesResponse {
 }
 
 type Info = ((Article, User), Vec<Tag>);
-impl MultipleArticlesResponse {
-    pub fn from(info: Vec<Info>, user: User, articles_count: ArticleCount) -> Self {
+impl std::convert::From<(Vec<Info>, ArticleCount)> for MultipleArticlesResponse {
+    fn from((info, articles_count): (Vec<Info>, ArticleCount)) -> Self {
         let articles = inf
             .iter()
             .map(|((article, user), tag_list)| {
