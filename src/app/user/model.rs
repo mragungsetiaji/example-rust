@@ -1,4 +1,4 @@
-use crate::app::follow::model::{ Follow, NewFollow };
+use crate::app::follow::model::{ DeleteFollow, Follow, NewFollow };
 use crate::app::profile::model::Profile;
 use crate::schema::users;
 use crate::schema::users::dsl::*;
@@ -106,16 +106,14 @@ impl User {
             .first::<User>(conn)
             .expect("failed to find user by username");
     
-        {
-            use crate::schema::follows::dsl::*;
-            diesel::insert_into(follows)
-                .values(&NewFollow {
-                    follower_id: self.id,
-                    followee_id: followee.id,
-                })
-                .execute(conn)
-                .expect("failed to insert follow");
-        };
+        Follow::create_follow(
+            conn,
+            &NewFollow {
+                follower_id: self.id,
+                followee_id: followee.id,
+            },
+        );
+
         let profile = Profile {
             username: self.username.clone(),
             bio: self.bio.clone(),
@@ -131,16 +129,14 @@ impl User {
             .first::<User>(conn)
             .expect("failed to find user by username");
     
-        {
-            use crate::schema::follows::dsl::*;
-            diesel::delete(
-                follows
-                    .filter(follower_id.eq(followee.id))
-                    .filter(followee_id.eq(self.id)),
-            )
-            .execute(conn)
-            .expect("failed to delete follow");
-        };
+        Follow::delete_follow(
+            conn,
+            &DeleteFollow {
+                follower_id: self.id,
+                followee_id: followee.id,
+            },
+        );
+
         let profile = Profile {
             username: self.username.clone(),
             bio: self.bio.clone(),

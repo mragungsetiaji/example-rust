@@ -3,6 +3,7 @@ use crate::app::tag::model::Tag;
 use crate::app::user::model::User;
 use serde::{Deserialize, Serialize};
 
+use std::convert::From;
 type ArticleCount = i64;
 
 #[derive(Deserialize,Serialize)]
@@ -10,7 +11,7 @@ pub struct SingleArticleResponse {
     pub article: ArticleContent,
 }
 
-impl std::convert::From<(Article, Profile, Vec<Tag>)> for SingleArticleResponse {
+impl From<(Article, Profile, Vec<Tag>)> for SingleArticleResponse {
     fn from((article, profile, tag_list): (Article, Profile, Vec<Tag>)) -> Self {
         Self {
             article::ArticleContent {
@@ -41,15 +42,15 @@ pub struct MultipleArticlesResponse {
     pub articles_count: ArticleCount,
 }
 
-type Info = ((Article, User), Vec<Tag>);
-impl std::convert::From<(Vec<Info>, ArticleCount)> for MultipleArticlesResponse {
+type Info = ((Article, Profile), Vec<Tag>);
+impl From<(Vec<Info>, ArticleCount)> for MultipleArticlesResponse {
     fn from((info, articles_count): (Vec<Info>, ArticleCount)) -> Self {
-        let articles = inf
+        let articles = info
             .iter()
-            .map(|((article, user), tag_list)| {
-                ArticleContent::DEPRECATED_from(
+            .map(|((article, profile), tag_list)| {
+                ArticleContent::from(
                     article.to_owned(), 
-                    user.clone(), 
+                    profile.to_owned(), 
                     tag_list.to_owned(),
                 )
             })
@@ -82,7 +83,7 @@ pub struct AuthorContent {
 }
 
 impl ArticleContent {
-    pub fn DEPRECATED_from(article: Article, user: User, tag_list: Vec<Tag>) -> Self {
+    pub fn from(article: Article, profile: Profile, tag_list: Vec<Tag>) -> Self {
         Self {
             slug: article.slug,
             title: article.title,
@@ -92,11 +93,20 @@ impl ArticleContent {
             created_at: article.created_at.to_string(),
             updated_at: article.updated_at.to_string(),
             author: AuthorContent {
-                username: user.username,
-                bio: user.bio,
-                image: user.image,
-                following: true,
+                username: profile.username,
+                bio: profile.bio,
+                image: profile.image,
+                following: profile.following,
             },
         }
     }
 }
+
+#[derive(Deserialize, Serialize)]
+pub struct AuthorContent {
+    pub username: String,
+    pub bio: Option<String>,
+    pub image: Option<String>,
+    pub following: bool,
+}
+

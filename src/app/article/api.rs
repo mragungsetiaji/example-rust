@@ -38,22 +38,17 @@ pub async fn index(
     /// It defaults to 20 if `params.limit` is `None`.
     let limit = params.limit.unwrap_or(20);
 
-    let (articles_list, articles_count) = {
-        let articles_list = service::fetch_articles_list(
-            &conn,
-            &service::FetchArticlesList {
-                tag: params.tag.clone(),
-                author: params.author.clone(),
-                favorited: params.favorited.clone(),
-                offset,
-                limit,
-            },
-        );
-        
-        let articles_count = service::fetch_articles_count(&conn);
-
-        (articles_list, articles_count)
-    };
+    let (articles_list, articles_count) = service::fetch_articles_list(
+        &conn,
+        &service::FetchArticlesList {
+            tag: params.tag.clone(),
+            author: params.author.clone(),
+            favorited: params.favorited.clone(),
+            offset,
+            limit,
+            me: auth_user,
+        },
+    )
     let res = response::MultipleArticlesResponse::from((
         articles_list,
         articles_count,
