@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate diesel;
-
-extern crate log;
+extern crate actix_web;
 
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
@@ -19,8 +18,7 @@ pub struct AppState {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG", "actix_web=info");
-    env_logger::init();
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
     
     HttpServer::new(move || {
         let pool = utils::db::establish_connection();
