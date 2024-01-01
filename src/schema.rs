@@ -1,3 +1,5 @@
+// @generated automatically by Diesel CLI.
+
 table! {
     articles (id) {
         id -> Uuid,
@@ -17,7 +19,7 @@ table! {
         article_id -> Uuid,
         author_id -> Uuid,
         body -> Text,
-        created_at -> Timestamp,
+        create_at -> Timestamp,
         updated_at -> Timestamp,
     }
 }
@@ -25,17 +27,17 @@ table! {
 table! {
     favorites (id) {
         id -> Uuid,
-        user_id -> Uuid,
         article_id -> Uuid,
+        user_id -> Uuid,
         created_at -> Timestamp,
         updated_at -> Timestamp,
     }
 }
 
 table! {
-    follows (follower_id, followed_id) {
+    follows (follower_id, followee_id) {
+        followee_id -> Uuid,
         follower_id -> Uuid,
-        followed_id -> Uuid,
         created_at -> Timestamp,
         updated_at -> Timestamp,
     }

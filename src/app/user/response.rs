@@ -14,8 +14,6 @@ impl From<(User, String)> for UserResponse {
                 email: user.email,
                 token: token,
                 username: user.username,
-                bio: user.bio,
-                image: user.image,
             },
         }
     }

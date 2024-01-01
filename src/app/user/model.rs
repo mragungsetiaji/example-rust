@@ -8,14 +8,13 @@ use crate::utils::token;
 use anyhow::Result;
 use bcrypt::{hash, verify, DEFAULT_COST};
 use chrono::prelude::*;
-use chrono::{ Datetime, NaiveDateTime};
+use chrono::NaiveDateTime;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use jsonwebtoken::{ EncodingKey, Header };
 use serde::{ Deserialize, Serialize };
 use uuid::Uuid;
 
-#[derive(Identifiable,Queryable, Serialize, Deserialize, Debug, Clone, Associations)]
+#[derive(Identifiable, Queryable, Serialize, Deserialize, Debug, Clone, Associations)]
 #[table_name = "users"]
 pub struct User {
     pub id: Uuid,
@@ -31,7 +30,7 @@ pub struct User {
 type Token = String;
 
 impl User {
-    pub fn sigunp<'a>(
+    pub fn signup<'a>(
         conn: &PgConnection,
         _email: &'a str,
         _username: &'a str,
@@ -57,14 +56,14 @@ impl User {
 
     pub fn signin(
         conn: &PgConnection,
-        _email: &str
+        _email: &str,
         naive_password: &str,
     ) -> Result<(User, Token)> {
         let user = users
             .filter(email.eq(_email))
             .limit(1)
             .first::<User>(conn)?;
-        verify(&native_password, &user.password)?;
+        verify(&naive_password, &user.password)?;
 
         let token = user.generate_token();
         let result = (user, token);
@@ -132,8 +131,8 @@ impl User {
         Follow::delete_follow(
             conn,
             &DeleteFollow {
-                follower_id: self.id,
                 followee_id: followee.id,
+                follower_id: self.id,
             },
         );
 
@@ -158,8 +157,11 @@ impl User {
 
 impl User {
     pub fn generate_token(&self) -> String {
-        let now = Utc::now().timestamp_nanos() / 1_000_000_000;
-        token::generate(self.id, now).expect("failed to generate token")
+        let now = Utc::now().timestamp_nanos_opt(); 
+        match now {
+            Some(n) => token::generate(self.id, n).expect("failed to generate token"),
+            _ => "".to_string(),
+        }
     }
 }
 

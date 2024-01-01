@@ -1,6 +1,7 @@
 use super::model::Profile;
 use crate::app::user::model::User;
 use diesel::pg::PgConnection;
+use uuid::Uuid;
 
 pub struct FetchProfileByName {
     pub me: User,
@@ -28,9 +29,9 @@ pub fn fetch_profile_by_id(conn: &PgConnection, params: &FetchProfileById) -> Pr
     let FetchProfileById { me, id } = params;
     let is_following = me.is_following(&conn, id);
     let profile = Profile {
-        username: followee.username.to_owned(),
-        bio: followee.bio.to_owned(),
-        image: followee.image.to_owned(),
+        username: me.username.to_owned(),
+        bio: me.bio.to_owned(),
+        image: me.image.to_owned(),
         following: is_following,
     };
     profile

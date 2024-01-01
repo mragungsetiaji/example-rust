@@ -1,8 +1,8 @@
-use app::user::model::{ UpdatableUser, User };
-use app::user::{ request, response };
+use crate::app::user::model::{ UpdatableUser, User };
+use crate::app::user::{ request, response };
 use crate::middleware::auth;
 use crate::AppState;
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse, HttpRequest};
 
 pub async fn signin(
     state: web::Data<AppState>,
@@ -29,15 +29,18 @@ pub async fn signin(
             })?;
 
     let res = response::UserResponse::from((user, token));
-    HttpResponse::Ok().body("users signin")
+    Ok(HttpResponse::Ok().json(res))
 }
 
 pub async fn signup(
-    pool: web::Data<DbPool>,
-    form: web::Json<handler::SignupReq>,
+    state: web::Data<AppState>,
+    form: web::Json<request::Signup>,
 ) -> Result<HttpResponse, HttpResponse> {
-    let conn = pool.get().expect("couldn't get db connection from pool");
-    let user = web::block(move || {
+    let conn = state
+        .pool
+        .get()
+        .expect("couldn't get db connection from pool");
+    let (user, token) = web::block(move || {
         User::signup(
             &conn,
             &form.user.email,
@@ -51,7 +54,7 @@ pub async fn signup(
         HttpResponse::InternalServerError().json(e.to_string())
     })?;
 
-    let res = handler::SignupRes::from(user);
+    let res = response::UserResponse::from((user, token));
     Ok(HttpResponse::Ok().json(res))
 }
 
@@ -60,7 +63,7 @@ pub async fn me(req: HttpRequest) -> Result<HttpResponse, HttpResponse> {
 
     if let Some(user) = user {
         let user = response::UserResponse::from((user.to_owned(), user.generate_token()));
-        Ok(HttpResponse::Ok().json(user));
+        Ok(HttpResponse::Ok().json(user))
     } else {
         Ok(HttpResponse::Ok().json({}))
     }

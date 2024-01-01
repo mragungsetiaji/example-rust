@@ -44,7 +44,7 @@ impl Article {
         article
     }
 
-    pub fn update(conn: &PgConnection, article_id: Uuid, record: &UpdateArticle) -> Self {
+    pub fn update(conn: &PgConnection, article_id: &Uuid, record: &UpdateArticle) -> Self {
         let article = diesel::update(articles.filter(id.eq(article_id)))
             .set(record)
             .get_result::<Article>(conn)

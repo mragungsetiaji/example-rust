@@ -21,7 +21,7 @@ pub struct Favorite {
 impl Favorite {
 
     // usize is the number of rows affected by the query
-    pub fn favorite(conn: &PgConnection, record: &FavorteAction) -> usize {
+    pub fn favorite(conn: &PgConnection, record: &FavoriteAction) -> usize {
         let item = diesel::insert_into(favorites::table)
             .values(record)
             .execute(conn)
@@ -31,8 +31,6 @@ impl Favorite {
     }
     
     pub fn unfavorite(conn: &PgConnection, record: &UnfavoriteAction) -> usize {
-        use crate::schema::favorites;
-        use crate::schema::favorites::dsl::*;
         let item = diesel::delete(favorites::table)
             .filter(favorites::user_id.eq_all(record.user_id))
             .filter(favorites::article_id.eq_all(record.article_id))

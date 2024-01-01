@@ -6,9 +6,9 @@ use crate::AppState;
 
 use actix_web::{web, HttpResponse, Result};
 
-#[get("")]
+
 pub async fn index(state: web::Data<AppState>) -> Result<HttpResponse, HttpResponse> {
-    let &mut conn = state
+    let conn = state
         .pool
         .get()
         .expect("couldn't get db connection from pool");
@@ -17,7 +17,7 @@ pub async fn index(state: web::Data<AppState>) -> Result<HttpResponse, HttpRespo
     // to avoid blocking the current thread. web::block is used to offload 
     // blocking I/O or CPU-bound operations to the Actix actor thread pool. 
     // If there's an error, it maps that error to a closure.
-    let tags = web::block(move || Tag::list(conn)).await.map_err(|e| {
+    let list = web::block(move || Tag::list(&conn)).await.map_err(|e| {
 
         // Inside the error handling closure, it prints the error to the standard 
         // error and returns an HttpResponse with a status of InternalServerError (500) 
@@ -31,6 +31,6 @@ pub async fn index(state: web::Data<AppState>) -> Result<HttpResponse, HttpRespo
     let res = response::TagsResponse::from(list);
     // If everything goes well, it returns an HttpResponse 
     // with a status of Ok (200) and the body as the JSON representation of list.
-    Ok(HttpResponse::Ok().json(list))
+    Ok(HttpResponse::Ok().json(res))
 }
 

@@ -1,20 +1,22 @@
-use std::pin::Pin;
-use std::task::{ Context, Poll };
-
-use actix_service::{ Service, Transform };
+use crate::app::user::model::User;
+use crate::constants;
+use crate::middleware;
+use crate::utils::token;
+use crate::AppState;
+use actix_service::{Service, Transform};
 use actix_web::HttpMessage;
 use actix_web::{
     dev::ServiceRequest,
     dev::ServiceResponse,
     http::{HeaderName, HeaderValue, Method},
     web::Data,
-    Error, HttpResponse, HttpRequest
+    Error, HttpRequest, HttpResponse,
 };
 use diesel::pg::PgConnection;
-use futures::future::{ ok, Ready };
+use futures::future::{ok, Ready};
 use futures::Future;
 use std::pin::Pin;
-use std::task::{ Context, Poll };
+use std::task::{Context, Poll};
 use uuid::Uuid;
 
 // There are two steps in middleware processing.
@@ -118,7 +120,7 @@ fn should_skip_verify(req: &ServiceRequest) -> bool {
         return true;
     }
 
-    for ignore_route in constants::IGNORE_ROUTES.iter() {
+    for ignore_route in constants::IGNORE_AUTH_ROUTES.iter() {
         if req.path().starts_with(ignore_route) {
             return true;
         }
@@ -127,7 +129,7 @@ fn should_skip_verify(req: &ServiceRequest) -> bool {
     false
 }
 
-fn find_auth_user(conn: &PgConnection, user_id: &Uuid) -> User {
+fn find_auth_user(conn: &PgConnection, user_id: Uuid) -> User {
     User::find_by_id(&conn, user_id)
 }
 
@@ -145,30 +147,28 @@ fn verify(req: &mut ServiceRequest) -> bool {
                     Ok(token_data) => {
                         let claims = token_data.claims;
                         let user_id = claims.user_id;
-                        if let Some(state) = req.app_date::<Data<AppState>>() {
+                        if let Some(state) = req.app_data::<Data<AppState>>() {
                             let conn = state
                                 .pool
                                 .get()
                                 .expect("couldn't get db connection from pool");
-                            let user = find_auth_user(&conn, &user_id);
-                            req.head().extentions_mut().insert(user);
+                            let user = find_auth_user(&conn, user_id);
+                            req.head().extensions_mut().insert(user);
                         }
-                        true
+                        return true
                     }
-                    _ => {
-                        error!("Invalid token");
-                        false
-                    }
+                    Err(_) => return false,
                 }
             }
-        }
-    }
+        } 
+    };
+    false
 }
 
 pub fn access_auth_user(req: &HttpRequest) -> Option<User> {
     let head = req.head();
-    let extentions = head.extensions();
+    let extensions = head.extensions();
     let _user = extensions.get::<User>();
-    let auth_user = _user.map({ |user| user.to_owned()})
+    let auth_user = _user.map( |user| user.to_owned());
     auth_user
 }

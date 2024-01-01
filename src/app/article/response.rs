@@ -1,12 +1,11 @@
 use crate::app::article::model::Article;
+use crate::app::profile::model::Profile;
 use crate::app::tag::model::Tag;
-use crate::app::user::model::User;
 use serde::{Deserialize, Serialize};
-
 use std::convert::From;
 type ArticleCount = i64;
 
-#[derive(Deserialize,Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct SingleArticleResponse {
     pub article: ArticleContent,
 }
@@ -14,12 +13,12 @@ pub struct SingleArticleResponse {
 impl From<(Article, Profile, Vec<Tag>)> for SingleArticleResponse {
     fn from((article, profile, tag_list): (Article, Profile, Vec<Tag>)) -> Self {
         Self {
-            article::ArticleContent {
+            article: ArticleContent {
                 slug: article.slug,
                 title: article.title,
                 description: article.description,
                 body: article.body,
-                tagList: tag_list
+                tag_list: tag_list
                     .iter()
                     .map(move |tag| tag.name.to_owned())
                     .collect(),
@@ -36,7 +35,7 @@ impl From<(Article, Profile, Vec<Tag>)> for SingleArticleResponse {
     }
 }
 
-#[derive(Deserialize,Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct MultipleArticlesResponse {
     pub articles: Vec<ArticleContent>,
     pub articles_count: ArticleCount,
@@ -47,16 +46,12 @@ impl From<(Vec<Info>, ArticleCount)> for MultipleArticlesResponse {
     fn from((info, articles_count): (Vec<Info>, ArticleCount)) -> Self {
         let articles = info
             .iter()
-            .map(|((article, profile), tag_list)| {
-                ArticleContent::from(
-                    article.to_owned(), 
-                    profile.to_owned(), 
-                    tag_list.to_owned(),
-                )
+            .map(|((article, profile), tags_list)| {
+                ArticleContent::from(article.to_owned(), profile.to_owned(), tags_list.to_owned())
             })
             .collect();
         Self {
-            articlesCount: articles_count,
+            articles_count: articles_count,
             articles: articles,
         }
     }
@@ -68,18 +63,13 @@ pub struct ArticleContent {
     pub title: String,
     pub description: String,
     pub body: String,
-    pub tagList: Vec<String>,
+    pub tag_list: Vec<String>,
     pub created_at: String,
     pub updated_at: String,
+    // TODO: add favorited info
+    // pub favorited,
+    // pub favoritesCount,
     pub author: AuthorContent,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct AuthorContent {
-    pub username: String,
-    pub bio: Option<String>,
-    pub image: Option<String>,
-    pub following: bool,
 }
 
 impl ArticleContent {
@@ -89,7 +79,7 @@ impl ArticleContent {
             title: article.title,
             description: article.description,
             body: article.body,
-            tagList: tag_list.iter().map(move |tag| tag.name.clone()).collect(),
+            tag_list: tag_list.iter().map(move |tag| tag.name.clone()).collect(),
             created_at: article.created_at.to_string(),
             updated_at: article.updated_at.to_string(),
             author: AuthorContent {
@@ -109,4 +99,3 @@ pub struct AuthorContent {
     pub image: Option<String>,
     pub following: bool,
 }
-

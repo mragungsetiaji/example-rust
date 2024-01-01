@@ -1,4 +1,4 @@
-use super::model::{Comment, CreateComment};
+use super::model::Comment;
 use super::{request, response, service};
 use crate::middleware::auth;
 use crate::AppState;
@@ -53,13 +53,13 @@ pub async fn delete(
     req: HttpRequest,
     path: web::Path<(ArticleIdSlug, CommentIdSlug)>,    
 ) -> impl Responder {
-    let auth_user = auth::access_auth_user(&req).expect("invaild user");
+    let _auth_user = auth::access_auth_user(&req).expect("invaild user");
     let conn = state
         .pool
         .get()
         .expect("couldn't get db connection from pool");
     let (article_id, comment_id) = path.into_inner();
-    let article_id = Uuid::parse_str(&article_id).expect("invalid article id");
+    let _article_id = Uuid::parse_str(&article_id).expect("invalid article id");
     let comment_id = Uuid::parse_str(&comment_id).expect("invalid comment id");
 
     Comment::delete(&conn, &comment_id);

@@ -1,6 +1,5 @@
 use crate::app::article::model::Article;
 use crate::schema::tags;
-use crate::schema::*;
 use chrono::NaiveDateTime;
 use diesel::pg::PgConnection;
 use diesel::result::Error;
@@ -24,7 +23,7 @@ use uuid::Uuid;
 // Deserialize: This trait also comes from the Serde crate 
 // and allows the struct to be deserialized from a format 
 // such as JSON.
-#[derive(Identifiable, Queryable, Debug, Serializem Deserialize, Associations)]
+#[derive(Identifiable, Queryable, Debug, Serialize, Deserialize, Clone, Associations)]
 #[belongs_to(Article, foreign_key = "article_id")]
 #[table_name = "tags"]
 pub struct Tag {
@@ -37,7 +36,7 @@ pub struct Tag {
 
 impl Tag {
 
-    pub fn fetch_list_by_article_id(conn: &PgConnection, _article_id: &Uuid) -> Vec<Self> {
+    pub fn fetch_list_by_article_id(conn: &PgConnection, _article_id: Uuid) -> Vec<Self> {
         use crate::schema::tags;
         use crate::schema::tags::dsl::*;
         use diesel::prelude::*;
@@ -48,7 +47,7 @@ impl Tag {
         list
     }
 
-    pub fn list(conn: &mut PgConnection) -> Result<Vec<Self>, Error> {
+    pub fn list(conn: &PgConnection) -> Result<Vec<Self>, Error> {
         use crate::schema;
         use diesel::prelude::*;
         use schema::tags::dsl::*;
@@ -58,7 +57,6 @@ impl Tag {
     }
 
     pub fn create_list(conn: &PgConnection, records: Vec<NewTag>) -> Vec<Self> {
-        use crate::diesel::RunQueryDsl;
         use crate::schema::tags::dsl::*;
         let tags_list = diesel::insert_into(tags)
             .values(records)

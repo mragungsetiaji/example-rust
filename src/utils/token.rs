@@ -8,7 +8,7 @@ static ONE_DAY: i64 = 60 * 60 * 24;
 pub fn decode(token: &str) -> jsonwebtoken::errors::Result<TokenData<Claims>> {
     jsonwebtoken::decode::<Claims>(
         &token, 
-        &Decodingkey::from_secret(&KEY), 
+        &DecodingKey::from_secret(&KEY), 
         &Validation::default(),
     )
 }

@@ -1,5 +1,5 @@
 
-use crate::service;
+use super::service;
 use crate::app::profile;
 use crate::middleware::auth::access_auth_user;
 use crate::AppState;

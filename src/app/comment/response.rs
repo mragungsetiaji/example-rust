@@ -46,7 +46,6 @@ impl From<Vec<(Comment, Profile)>> for MultipleCommentsResponse {
                         body: comment.body,
                         created_at: comment.created_at,
                         updated_at: comment.updated_at,
-                        body: comment.body,
                         author: InnerAuthor {
                             username: profile.username,
                             bio: profile.bio,

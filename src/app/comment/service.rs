@@ -1,6 +1,6 @@
-use super::model::{ Comment, CreateComment };
+use super::model::{Comment, CreateComment};
 use crate::app::profile::model::Profile;
-use crate::app::profile::service::{ fetch_profile_by_id, FetchProfileById };    
+use crate::app::profile::service::{fetch_profile_by_id, FetchProfileById};
 use crate::app::user::model::User;
 use diesel::pg::PgConnection;
 use uuid::Uuid;
@@ -10,9 +10,12 @@ pub struct CreateCommentService {
     pub article_id: Uuid,
     pub author: User,
 }
-
-pub fn create(conn: &PgConnection, params: &CreateCommentService) -> Comment {
-    let CreateCommentService { body, article_id, author } = params;
+pub fn create(conn: &PgConnection, params: &CreateCommentService) -> (Comment, Profile) {
+    let CreateCommentService {
+        body,
+        article_id,
+        author,
+    } = params;
     let comment = Comment::create(
         &conn,
         &CreateComment {
@@ -24,32 +27,32 @@ pub fn create(conn: &PgConnection, params: &CreateCommentService) -> Comment {
     let profile = fetch_profile_by_id(
         &conn,
         &FetchProfileById {
-            me: author.to_owned(),
             id: author.id,
+            me: author.to_owned(),
         },
     );
     (comment, profile)
 }
 
-pub fn fetch_comments_list(conn: &PgConnection, user: &User) -> Vec<(Comment, Profile)> {
+pub fn fetch_comments_list(conn: &PgConnection, me: &User) -> Vec<(Comment, Profile)> {
     use crate::schema::comments;
     use crate::schema::comments::dsl::*;
-    use crate::schema::follows;
     use crate::schema::users;
     use diesel::prelude::*;
     let _comments = comments
         .inner_join(users::table)
         .filter(comments::article_id.eq(article_id))
-        .get_result::<(Comment, User)>(conn)
-        .expect("Error loading comments");
-    
+        .get_results::<(Comment, User)>(conn)
+        .expect("could not fetch comments list.");
+
     let _comments = _comments
-        .into_iter()
-        .map(|_comment, user| {
+        .iter()
+        .map(|(_comment, _user)| {
+            // TODO: avoid N+1. Write one query to fetch all data somehow.
             let profile = fetch_profile_by_id(
                 &conn,
                 &FetchProfileById {
-                    me: user.to_owned(),
+                    me: me.to_owned(),
                     id: _user.id,
                 },
             );

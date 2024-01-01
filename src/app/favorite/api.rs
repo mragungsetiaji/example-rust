@@ -1,8 +1,5 @@
 use super::{ response, service };
-use super::{
-    response,
-    service::{self, UnfavoriteService},
-}
+use super::service::UnfavoriteService;
 use crate::middleware::auth;
 use crate::AppState;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
@@ -55,7 +52,7 @@ pub async fn unfavorite(
             article_id: article_id,
         },
     );
-    let res = response::SingleArticleResponse::from((article, profile, tag_list));
+    let _res = response::SingleArticleResponse::from((article, profile, tag_list));
     
     HttpResponse::Ok().body("unfavorite")
 }

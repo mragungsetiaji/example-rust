@@ -6,7 +6,7 @@ use diesel::pg::PgConnection;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Deseralize, Serialize, Queryable, Associations, Debug, Clone)]
+#[derive(Deserialize, Serialize, Queryable, Associations, Debug, Clone)]
 #[belongs_to(User, foreign_key = "author_id")]
 #[belongs_to(Article, foreign_key = "article_id")]
 #[table_name = "comments"]
@@ -37,7 +37,6 @@ impl Comment {
     }
 
     pub fn delete(conn: &PgConnection, comment_id: &Uuid)  {
-        use crate::schema::comments:
         use crate::schema::comments::dsl::*;
         use diesel::prelude::*;
         diesel::delete(comments.filter(id.eq(comment_id)))

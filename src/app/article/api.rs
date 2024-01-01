@@ -1,6 +1,6 @@
-use super::model::{Article, NewArticle, UpdateArticle};
+use super::model::Article;
 use super::service;
-use super::{ request, response };
+use super::{request, response};
 use crate::middleware::auth;
 use crate::AppState;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
@@ -23,37 +23,27 @@ pub async fn index(
     req: HttpRequest,
     params: web::Query<ArticlesListQueryParameter>,
 ) -> impl Responder {
-    let auth_user = auth::access_auth_user(&req).expect("invaild user");
+    let auth_user = auth::access_auth_user(&req).expect("couldn't access auth user.");
     let conn = state
         .pool
         .get()
         .expect("couldn't get db connection from pool");
-    
-    /// Calculates the offset and limit for pagination.
-    ///
-    /// The `offset` is the number of items to skip before starting to return items.
-    /// It defaults to 0 if `params.offset` is `None`, but is capped at a maximum of 100.
-    let offset = std::cmp::max(params.offset.to_owned().unwrap_or(0), 100);
-    /// The `limit` is the maximum number of items to return.
-    /// It defaults to 20 if `params.limit` is `None`.
+    let offset = std::cmp::min(params.offset.to_owned().unwrap_or(0), 100);
     let limit = params.limit.unwrap_or(20);
 
     let (articles_list, articles_count) = service::fetch_articles_list(
         &conn,
-        &service::FetchArticlesList {
+        service::FetchArticlesList {
             tag: params.tag.clone(),
             author: params.author.clone(),
             favorited: params.favorited.clone(),
-            offset,
-            limit,
+            offset: offset,
+            limit: limit,
             me: auth_user,
         },
-    )
-    let res = response::MultipleArticlesResponse::from((
-        articles_list,
-        articles_count,
-    ));
+    );
 
+    let res = response::MultipleArticlesResponse::from((articles_list, articles_count));
     HttpResponse::Ok().json(res)
 }
 
@@ -68,7 +58,7 @@ pub async fn feed(
     req: HttpRequest,
     params: web::Query<FeedQueryParameter>,
 ) -> impl Responder {
-    let auth_user = auth::access_auth_user(&req).expect("invaild user");
+    let auth_user = auth::access_auth_user(&req).expect("couldn't access auth user.");
     let conn = state
         .pool
         .get()
@@ -77,44 +67,38 @@ pub async fn feed(
     let limit = params.limit.unwrap_or(20);
     let (articles_list, articles_count) = service::fetch_following_articles(
         &conn,
-        &service::FetchFollowingArticles {
+        &service::FetchFollowedArticlesSerivce {
             me: auth_user,
-            offset,
-            limit,
+            offset: offset,
+            limit: limit,
         },
     );
 
-    let res = response::MultipleArticlesResponse::from((
-        articles_list,
-        articles_count,
-    ));
+    let res = response::MultipleArticlesResponse::from((articles_list, articles_count));
     HttpResponse::Ok().json(res)
 }
 
 pub async fn show(
     state: web::Data<AppState>,
     req: HttpRequest,
-    path: web:;Path<ArticleIdSlug>,
+    path: web::Path<ArticleIdSlug>,
 ) -> impl Responder {
-    let auth_user = auth::access_auth_user(&req).expect("invaild user");
+    let auth_user = auth::access_auth_user(&req).expect("couldn't access auth user.");
     let conn = state
         .pool
         .get()
         .expect("couldn't get db connection from pool");
     let article_id = path.into_inner();
-    let (article, profile, tag_list) = service::fetch_article(
+    let (article, profile, tags_list) = service::fetch_article(
         &conn,
         &service::FetchArticle {
             article_id: article_id,
             me: auth_user,
         },
     );
-    
-    let res = response::SingleArticleResponse::from((
-        article,
-        profile,
-        tag_list,
-    ));
+
+    let res = response::SingleArticleResponse::from((article, profile, tags_list));
+
     HttpResponse::Ok().json(res)
 }
 
@@ -123,25 +107,24 @@ pub async fn create(
     req: HttpRequest,
     form: web::Json<request::CreateArticleRequest>,
 ) -> Result<HttpResponse, HttpResponse> {
-    let auth_user = auth::access_auth_user(&req).expect("invaild user");
-
+    let auth_user = auth::access_auth_user(&req).expect("couldn't access auth user.");
     let conn = state
         .pool
         .get()
         .expect("couldn't get db connection from pool");
+
     let (article, profile, tag_list) = service::create(
         &conn,
-        &service::CreateArticleService {
+        &service::CreateArticleSerivce {
             author_id: auth_user.id,
             title: form.article.title.clone(),
             slug: Article::convert_title_to_slug(&form.article.title),
             description: form.article.description.clone(),
             body: form.article.body.clone(),
-            tag_list: form.article.tagList.to_owned(),
+            tag_list: form.article.tag_list.to_owned(),
             me: auth_user,
         },
     );
-
     let res = response::SingleArticleResponse::from((article, profile, tag_list));
     Ok(HttpResponse::Ok().json(res))
 }
@@ -152,20 +135,20 @@ pub async fn update(
     path: web::Path<ArticleIdSlug>,
     form: web::Json<request::UpdateArticleRequest>,
 ) -> impl Responder {
-    let auth_user = auth::access_auth_user(&req).expect("invaild user");
-    
+    let auth_user = auth::access_auth_user(&req).expect("couldn't access auth user.");
     let conn = state
         .pool
         .get()
         .expect("couldn't get db connection from pool");
     let article_id = path.into_inner();
-    
+    // TODO: validation deletable auth_user.id == article.author_id ?
     let article_slug = &form
         .article
-        .title 
+        .title
         .as_ref()
-        .map(|_title| Article::convert_title_to_slug(title));
-    }
+        .map(|_title| Article::convert_title_to_slug(_title));
+
+    // TODO: validation: slug is not empty
 
     let (article, profile, tag_list) = service::update_article(
         &conn,
@@ -177,9 +160,9 @@ pub async fn update(
             description: form.article.description.clone(),
             body: form.article.body.clone(),
         },
-    )
+    );
+
     let res = response::SingleArticleResponse::from((article, profile, tag_list));
-    
     HttpResponse::Ok().json(res)
 }
 
@@ -188,20 +171,24 @@ pub async fn delete(
     req: HttpRequest,
     path: web::Path<ArticleIdSlug>,
 ) -> impl Responder {
-    let auth_user = auth::access_auth_user(&req).expect("invaild user");
-
+    let _auth_user = auth::access_auth_user(&req).expect("couldn't access auth user.");
     let conn = state
         .pool
         .get()
         .expect("couldn't get db connection from pool");
     let article_id = path.into_inner();
+
     {
+        // TODO: move this logic into service
         use crate::schema::articles::dsl::*;
         use diesel::prelude::*;
 
+        // TODO: validation deletable auth_user.id == article.author_id ?
+
         diesel::delete(articles.filter(id.eq(article_id)))
             .execute(&conn)
-            .expect("Error deleting article");
+            .expect("couldn't delete article by id.");
+        // NOTE: references tag rows are deleted automatically by DELETE CASCADE
     }
 
     HttpResponse::Ok().json({})
