@@ -71,8 +71,16 @@ pub struct FetchArticlesList {
     pub me: User,
 }
 
-type ArticlesList = Vec<((Article, Profile), Vec<Tag>)>;
-pub fn fetch_articles_list(conn: &PgConnection, params: FetchArticlesList) -> (ArticlesList, i64) {
+type IsFavorited = bool;
+type FavoritedCount = i64;
+type ArticlesCount = i64;
+type ArticlesListInner = ((Article, Profile, IsFavorited), FavoritedCount);
+type ArticlesList = Vec<(ArticlesListInner, Vec<Tag>)>;
+
+pub fn fetch_articles_list(
+    conn: &PgConnection, 
+    params: FetchArticlesList,
+) -> (ArticlesList, ArticlesCount) {
     use diesel::prelude::*;
     let query = || {
         let mut query = articles::table.inner_join(users::table).into_boxed();
@@ -136,6 +144,34 @@ pub fn fetch_articles_list(conn: &PgConnection, params: FetchArticlesList) -> (A
             tags_list
         };
 
+        let article_ids_list = article_and_user_list
+            .clone() // TODO: avoid clone
+            .into_iter()
+            .map(|(article, _)| article.id)
+            .collect::<Vec<_>>();
+        let favorites_count_list = article_ids_list
+            .into_iter()
+            .map(|article_id| {
+                let favorites_count = favorites::table
+                    .filter(favorites::article_id.eq_all(article_id))
+                    .select(diesel::dsl::count(favorites::created_at))
+                    .first::<i64>(conn)
+                    .expect("could not fetch favorites count.");
+                favorites_count
+            })
+            .collect::<Vec<_>>();
+        let favorited_article_ids = favorites::table
+            .filter(favorites::user_id.eq(params.me.id))
+            .select(favorites::user_id)
+            .get_results::<Uuid>(conn)
+            .expect("could not fetch favorited articles id.");
+        let is_favorited_by_me = |article: &Article| {
+            favorited_article_ids
+                .to_owned()
+                .into_iter()
+                .any(|_id| _id == article.id)
+        };
+
         let article_and_profile_list = {
             let user_ids_list = article_and_user_list
                 .clone() // TODO: avoid clone
@@ -160,8 +196,10 @@ pub fn fetch_articles_list(conn: &PgConnection, params: FetchArticlesList) -> (A
                         image: user.image,
                         following: following.to_owned(),
                     };
-                    (article, profile)
+                    let favorited = is_favorited_by_me(&article);
+                    (article, profile, favorited)
                 })
+                .zip(favorites_count_list)
                 .collect::<Vec<_>>();
 
             article_and_profile_list
@@ -216,7 +254,7 @@ pub struct FetchFollowedArticlesSerivce {
 pub fn fetch_following_articles(
     conn: &PgConnection,
     params: &FetchFollowedArticlesSerivce,
-) -> (Vec<((Article, Profile), Vec<Tag>)>, i64) {
+) -> (ArticlesList, ArticlesCount) {
     let query = {
         let following_user_ids = follows
             .filter(follows::follower_id.eq(params.me.id))
@@ -265,6 +303,34 @@ pub fn fetch_following_articles(
                 .get_results::<Follow>(conn)
                 .expect("could not fetch follow.");
 
+            let article_ids_list = article_and_user_list
+                .clone()
+                .into_iter()
+                .map(|(article, _)| article.id)
+                .collect::<Vec<_>>();
+            let favorites_count_list = article_ids_list
+                .into_iter()
+                .map(|article_id| {
+                    let favorites_count = favorites::table
+                        .filter(favorites::article_id.eq_all(article_id))
+                        .select(diesel::dsl::count(favorites::created_at))
+                        .first::<i64>(conn)
+                        .expect("could not fetch favorites count.");
+                    favorites_count
+                })
+                .collect::<Vec<_>>();
+            let favorited_article_ids = favorites::table
+                .filter(favorites::user_id.eq(params.me.id))
+                .select(favorites::user_id)
+                .get_results::<Uuid>(conn)
+                .expect("could not fetch favorited articles id.");
+            let is_favorited_by_me = |article: &Article| {
+                favorited_article_ids
+                    .to_owned()
+                    .into_iter()
+                    .any(|_id| _id == article.id)
+            };
+
             let follows_list = follows_list.into_iter();
             let article_and_profile_list = article_and_user_list
                 .into_iter()
@@ -276,8 +342,10 @@ pub fn fetch_following_articles(
                         image: user.image,
                         following: following.to_owned(),
                     };
+                    let favorited = is_favorited_by_me(&article);
                     (article, profile)
                 })
+                .zip(favorites_count_list)
                 .collect::<Vec<_>>();
 
             article_and_profile_list
