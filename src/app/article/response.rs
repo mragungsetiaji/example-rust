@@ -1,4 +1,5 @@
 use crate::app::article::model::Article;
+use crate::app::favorite::model::FavoriteInfo;
 use crate::app::profile::model::Profile;
 use crate::app::tag::model::Tag;
 use serde::{Deserialize, Serialize};
@@ -10,8 +11,11 @@ pub struct SingleArticleResponse {
     pub article: ArticleContent,
 }
 
-impl From<(Article, Profile, Vec<Tag>)> for SingleArticleResponse {
-    fn from((article, profile, tag_list): (Article, Profile, Vec<Tag>)) -> Self {
+impl From<(Article, Profile, FavoriteInfo, Vec<Tag>)> for SingleArticleResponse {
+    fn from(
+        (article, profile, favorite_info, tag_list): (
+            Article, Profile, FavoriteInfo, Vec<Tag>)
+        ) -> Self {
         Self {
             article: ArticleContent {
                 slug: article.slug,
@@ -24,8 +28,8 @@ impl From<(Article, Profile, Vec<Tag>)> for SingleArticleResponse {
                     .collect(),
                 created_at: article.created_at.to_string(),
                 updated_at: article.updated_at.to_string(),
-                favorited: false,
-                favorites_count: 0,
+                favorited: favorite_info.is_favorited.to_owned(),
+                favorites_count: favorite_info.favorites_count.to_owned(),
                 author: AuthorContent {
                     username: profile.username,
                     bio: profile.bio,
@@ -43,10 +47,8 @@ pub struct MultipleArticlesResponse {
     pub articles_count: ArticleCount,
 }
 
-type IsFavorited = bool;
-type FavoritedCount = i64;
 type ArticlesCount = i64;
-type Inner = (((Article, Profile, IsFavorited), FavoritedCount), Vec<Tag>);
+type Inner = ((Article, Profile, FavoriteInfo), Vec<Tag>);
 type ArticlesList = Vec<Inner>;
 type Item = (ArticlesList, ArticlesCount);
 
@@ -55,12 +57,11 @@ impl From<Item> for MultipleArticlesResponse {
         let articles = list
             .iter()
             .map(
-                |(((article, profile, is_favorited), favorited_count), tags_list)| {
+                |((article, profile, favorite_info), tags_list)| {
                     ArticleContent::from((
                         article.to_owned(), 
                         profile.to_owned(), 
-                        is_favorited.to_owned(),
-                        favorited_count.to_owned(),
+                        favorite_info.to_owned(),
                         tags_list.to_owned(),
                     ))
                 },
@@ -87,13 +88,12 @@ pub struct ArticleContent {
     pub author: AuthorContent,
 }
 
-impl From<(Article, Profile, IsFavorited, FavoritedCount, Vec<Tag>)> for ArticleContent {
+impl From<(Article, Profile, FavoriteInfo, Vec<Tag>)> for ArticleContent {
     fn from(
-        (article, profile, is_favorited, favorited_count, tags_list): (
+        (article, profile, favorite_info, tags_list): (
             Article,
             Profile,
-            IsFavorited,
-            FavoritedCount,
+            FavoriteInfo,
             Vec<Tag>,
         ),
     ) -> Self {
@@ -108,8 +108,8 @@ impl From<(Article, Profile, IsFavorited, FavoritedCount, Vec<Tag>)> for Article
                 .collect(),
             created_at: article.created_at.to_string(),
             updated_at: article.updated_at.to_string(),
-            favorited: is_favorited,
-            favorites_count: favorited_count,
+            favorited: favorite_info.is_favorited.to_owned(),
+            favorites_count: favorite_info.favorites_count.to_owned(),
             author: AuthorContent {
                 username: profile.username,
                 bio: profile.bio,

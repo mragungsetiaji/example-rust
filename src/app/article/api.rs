@@ -3,7 +3,7 @@ use super::service;
 use super::{request, response};
 use crate::middleware::auth;
 use crate::AppState;
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -22,7 +22,7 @@ pub async fn index(
     state: web::Data<AppState>,
     req: HttpRequest,
     params: web::Query<ArticlesListQueryParameter>,
-) -> impl Responder {
+) -> Result<HttpResponse, HttpResponse> {
     let auth_user = auth::access_auth_user(&req).expect("couldn't access auth user.");
     let conn = state
         .pool
@@ -44,7 +44,7 @@ pub async fn index(
     );
 
     let res = response::MultipleArticlesResponse::from((articles_list, articles_count));
-    HttpResponse::Ok().json(res)
+    Ok(HttpResponse::Ok().json(res))
 }
 
 #[derive(Deserialize)]
@@ -57,7 +57,7 @@ pub async fn feed(
     state: web::Data<AppState>,
     req: HttpRequest,
     params: web::Query<FeedQueryParameter>,
-) -> impl Responder {
+) -> Result<HttpResponse, HttpResponse>{
     let auth_user = auth::access_auth_user(&req).expect("couldn't access auth user.");
     let conn = state
         .pool
@@ -75,21 +75,21 @@ pub async fn feed(
     );
 
     let res = response::MultipleArticlesResponse::from((articles_list, articles_count));
-    HttpResponse::Ok().json(res)
+    Ok(HttpResponse::Ok().json(res))
 }
 
 pub async fn show(
     state: web::Data<AppState>,
     req: HttpRequest,
     path: web::Path<ArticleIdSlug>,
-) -> impl Responder {
+) -> Result<HttpResponse, HttpResponse> {
     let auth_user = auth::access_auth_user(&req).expect("couldn't access auth user.");
     let conn = state
         .pool
         .get()
         .expect("couldn't get db connection from pool");
     let article_id = path.into_inner();
-    let (article, profile, tags_list) = service::fetch_article(
+    let (article, profile, favorite_info, tags_list) = service::fetch_article(
         &conn,
         &service::FetchArticle {
             article_id: article_id,
@@ -97,9 +97,10 @@ pub async fn show(
         },
     );
 
-    let res = response::SingleArticleResponse::from((article, profile, tags_list));
-
-    HttpResponse::Ok().json(res)
+    let res = response::SingleArticleResponse::from(
+        (article, profile, favorite_info, tags_list)
+    );
+    Ok(HttpResponse::Ok().json(res))
 }
 
 pub async fn create(
@@ -113,7 +114,7 @@ pub async fn create(
         .get()
         .expect("couldn't get db connection from pool");
 
-    let (article, profile, tag_list) = service::create(
+    let (article, profile, favorite_info, tag_list) = service::create(
         &conn,
         &service::CreateArticleSerivce {
             author_id: auth_user.id,
@@ -125,7 +126,9 @@ pub async fn create(
             me: auth_user,
         },
     );
-    let res = response::SingleArticleResponse::from((article, profile, tag_list));
+    let res = response::SingleArticleResponse::from(
+        (article, profile, favorite_info, tag_list)
+    );
     Ok(HttpResponse::Ok().json(res))
 }
 
@@ -134,7 +137,7 @@ pub async fn update(
     req: HttpRequest,
     path: web::Path<ArticleIdSlug>,
     form: web::Json<request::UpdateArticleRequest>,
-) -> impl Responder {
+) -> Result<HttpResponse, HttpResponse> {
     let auth_user = auth::access_auth_user(&req).expect("couldn't access auth user.");
     let conn = state
         .pool
@@ -150,7 +153,7 @@ pub async fn update(
 
     // TODO: validation: slug is not empty
 
-    let (article, profile, tag_list) = service::update_article(
+    let (article, profile, favorite_info, tag_list) = service::update_article(
         &conn,
         &service::UpdateArticleService {
             me: auth_user,
@@ -162,15 +165,17 @@ pub async fn update(
         },
     );
 
-    let res = response::SingleArticleResponse::from((article, profile, tag_list));
-    HttpResponse::Ok().json(res)
+    let res = response::SingleArticleResponse::from(
+        (article, profile, favorite_info, tag_list)
+    );
+    Ok(HttpResponse::Ok().json(res))
 }
 
 pub async fn delete(
     state: web::Data<AppState>,
     req: HttpRequest,
     path: web::Path<ArticleIdSlug>,
-) -> impl Responder {
+) -> Result<HttpResponse, HttpResponse> {
     let _auth_user = auth::access_auth_user(&req).expect("couldn't access auth user.");
     let conn = state
         .pool
@@ -191,5 +196,5 @@ pub async fn delete(
         // NOTE: references tag rows are deleted automatically by DELETE CASCADE
     }
 
-    HttpResponse::Ok().json({})
+    Ok(HttpResponse::Ok().json({}))
 }

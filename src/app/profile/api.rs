@@ -3,7 +3,7 @@ use super::service;
 use crate::app::profile;
 use crate::middleware::auth::access_auth_user;
 use crate::AppState;
-use actix_web::{ web, HttpRequest, HttpResponse, Responder };
+use actix_web::{ web, HttpRequest, HttpResponse};
 
 type UsernameSlug = String;
 
@@ -11,7 +11,7 @@ pub async fn show(
     state: web::Data<AppState>,
     req: HttpRequest,
     path: web::Path<UsernameSlug>,
-) -> impl Responder {
+) -> Result<HttpResponse, HttpResponse> {
     
     let me = access_auth_user(&req).expect("invalid user");
     let conn = state
@@ -28,15 +28,14 @@ pub async fn show(
     );
 
     let res = profile::response::ProfileResponse::from(profile);
-    HttpResponse::Ok().json(res)
+    Ok(HttpResponse::Ok().json(res))
 }
 
 pub async fn follow(
     state: web::Data<AppState>,
     req: HttpRequest,
     path: web::Path<UsernameSlug>,
-) -> impl Responder {
-    
+) -> Result<HttpResponse, HttpResponse> {
     let user = access_auth_user(&req).expect("invalid user");
     let conn = state
         .pool 
@@ -44,14 +43,14 @@ pub async fn follow(
         .expect("couldnt get db connection from pool");
     let username = path.into_inner();
     let profile = user.follow(&conn, &username).expect("couldnt follow user");
-    HttpResponse::Ok().json(profile)
+    Ok(HttpResponse::Ok().json(profile))
 }
 
 pub async fn unfollow(
     state: web::Data<AppState>,
     req: HttpRequest,
     path: web::Path<UsernameSlug>,
-) -> impl Responder {
+) -> Result<HttpResponse, HttpResponse> {
 
     let user = access_auth_user(&req).expect("invalid user");
     let conn = state
@@ -64,5 +63,5 @@ pub async fn unfollow(
     let profile = user
         .unfollow(&conn, &username)
         .expect("couldn't unfollow user");
-    HttpResponse::Ok().json(profile)
+    Ok(HttpResponse::Ok().json(profile))
 }

@@ -29,7 +29,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(AppState {pool: pool})
             .service(web::scope("").configure(routes::api))
     })
-    .bind("127.0.0.1:8080")?
+    .bind(constants::BIND)?
     .run()
     .await
 }
