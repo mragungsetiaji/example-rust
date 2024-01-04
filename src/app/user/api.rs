@@ -58,16 +58,17 @@ pub async fn signup(
     Ok(HttpResponse::Ok().json(res))
 }
 
-pub async fn me(req: HttpRequest) -> Result<HttpResponse, HttpResponse> {
-    let user = auth::access_auth_user(&req);
+use crate::error::AppError;
 
-    if let Some(user) = user {
-        let user = response::UserResponse::from((user.to_owned(), user.generate_token()));
-        Ok(HttpResponse::Ok().json(user))
-    } else {
-        Ok(HttpResponse::Ok().json({}))
-    }
+fn happen_err() -> Result<HttpResponse, AppError> {
+    Err(AppError::HogeError("this is hoge".to_string()))
 }
+
+pub async fn me(_req: HttpRequest) -> actix_web::Result<HttpResponse> {
+    let _ = happen_err()?;
+    Ok(HttpResponse::Ok().json("hoge"))
+}
+
 
 pub async fn update(
     state: web::Data<AppState>,

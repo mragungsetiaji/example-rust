@@ -90,7 +90,7 @@ where
     // This function is called for each request. It takes a mutable reference 
     // to the service (self) and a mutable ServiceRequest (req).
     fn call(&mut self, mut req: ServiceRequest) -> Self::Future {
-        if should_skip_verify(&req) || verify(&mut req) {
+        if should_skip_verify(&req) || verify_and_insert_auth_user(&mut req) {
             let fut = self.service.call(req);
             Box::pin(async move {
                 let res = fut.await?;
@@ -133,7 +133,7 @@ fn find_auth_user(conn: &PgConnection, user_id: Uuid) -> User {
     User::find_by_id(&conn, user_id)
 }
 
-fn verify(req: &mut ServiceRequest) -> bool {
+fn verify_and_insert_auth_user(req: &mut ServiceRequest) -> bool {
     req.headers_mut().append(
         HeaderName::from_static("content-length"),
         HeaderValue::from_static("true"),
@@ -165,10 +165,10 @@ fn verify(req: &mut ServiceRequest) -> bool {
     false
 }
 
-pub fn access_auth_user(req: &HttpRequest) -> Option<User> {
+pub fn access_auth_user(req: &HttpRequest) -> anyhow::Result<User>{
     let head = req.head();
     let extensions = head.extensions();
     let _user = extensions.get::<User>();
     let auth_user = _user.map( |user| user.to_owned());
-    auth_user
+    auth_user.ok_or(anyhow::anyhow!("unauthorized user"))
 }
