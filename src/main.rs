@@ -3,7 +3,7 @@ extern crate diesel;
 extern crate actix_web;
 
 use actix_web::middleware::Logger;
-use actix_web::{web, App, HttpServer};
+use actix_web::{App, HttpServer};
 
 mod app;
 mod constants;
@@ -12,10 +12,6 @@ mod middleware;
 mod routes;
 mod schema;
 mod utils;
-
-pub struct AppState {
-    pool: utils::db::DbPool,
-}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -27,8 +23,8 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .wrap(middleware::cors::cors())
             .wrap(middleware::auth::Authentication)
-            .app_data(AppState {pool: pool})
-            .service(web::scope("").configure(routes::api))
+            .app_data(middleware::state::AppState { pool })
+            .configure(routes::api)
     })
     .bind(constants::BIND)?
     .run()

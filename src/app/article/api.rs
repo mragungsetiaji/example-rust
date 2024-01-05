@@ -2,7 +2,7 @@ use super::model::Article;
 use super::service;
 use super::{request, response};
 use crate::middleware::auth;
-use crate::AppState;
+use crate::middleware::state::AppState;
 use actix_web::{web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 use uuid::Uuid;
@@ -23,11 +23,8 @@ pub async fn index(
     req: HttpRequest,
     params: web::Query<ArticlesListQueryParameter>,
 ) -> Result<HttpResponse, HttpResponse> {
-    let auth_user = auth::access_auth_user(&req).expect("couldn't access auth user.");
-    let conn = state
-        .pool
-        .get()
-        .expect("couldn't get db connection from pool");
+    let auth_user = auth::access_auth_user(&req)?;
+    let conn = state.get_conn()?;
     let offset = std::cmp::min(params.offset.to_owned().unwrap_or(0), 100);
     let limit = params.limit.unwrap_or(20);
 
@@ -41,7 +38,7 @@ pub async fn index(
             limit: limit,
             me: auth_user,
         },
-    );
+    )?;
 
     let res = response::MultipleArticlesResponse::from((articles_list, articles_count));
     Ok(HttpResponse::Ok().json(res))

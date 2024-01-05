@@ -1,90 +1,57 @@
 use crate::app::article::model::Article;
-use crate::app::article::service::{fetch_article, FetchArticle};
-use crate::app::favorite::model::{Favorite, FavoriteInfo, FavoriteAction, UnfavoriteAction};
-use crate::app::profile::model::Profile;
-use crate::app::tag::model::Tag;
 use crate::app::user::model::User;
-use diesel::pg::PgConnection;
+use crate::error::AppError;
+use crate::schema::favorites;
+use chrono::NaiveDateTime;
+use diesel::*;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-pub struct FavoriteService {
-    pub me: User,
+#[derive(Serialize, Deserialize, Queryable, Identifiable, Associations, Clone, Debug)]
+#[belongs_to(Article, foreign_key = "article_id")]
+#[belongs_to(User, foreign_key = "user_id")]
+#[table_name = "favorites"]
+pub struct Favorite {
+    pub id: Uuid,
+    pub article_id: Uuid,
+    pub user_id: Uuid,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+impl Favorite {
+    pub fn favorite(conn: &PgConnection, record: &FavorteAction) -> Result<usize, AppError> {
+        let item = diesel::insert_into(favorites::table)
+            .values(record)
+            .execute(conn)?;
+        Ok(item)
+    }
+
+    pub fn unfavorite(conn: &PgConnection, params: &UnfavoriteAction) -> Result<usize, AppError> {
+        use crate::schema::favorites;
+        use crate::schema::favorites::dsl::*;
+        let item = diesel::delete(favorites::table)
+            .filter(favorites::user_id.eq_all(params.user_id))
+            .filter(favorites::article_id.eq_all(params.article_id))
+            .execute(conn)?;
+        Ok(item)
+    }
+}
+
+#[derive(Insertable)]
+#[table_name = "favorites"]
+pub struct FavorteAction {
+    pub user_id: Uuid,
     pub article_id: Uuid,
 }
 
-pub fn favorite(
-    conn: &PgConnection, 
-    params: &FavoriteService,
-) -> (Article, Profile, FavoriteInfo, Vec<Tag>) {
-    let _ = Favorite::favorite(
-        conn,
-        &FavoriteAction {
-            user_id: params.me.id,
-            article_id: params.article_id,
-        },
-    );
-    let item = fetch_article(
-        conn,
-        &FetchArticle {
-            article_id: params.article_id,
-            me: params.me.to_owned(),
-        },
-    );
-    item
-}
-
-pub struct UnfavoriteService {
-    pub me: User,
+pub struct UnfavoriteAction {
+    pub user_id: Uuid,
     pub article_id: Uuid,
 }
 
-pub fn unfavorite(
-    conn: &PgConnection, 
-    params: &UnfavoriteService,
-) -> (Article, Profile, FavoriteInfo, Vec<Tag>) {
-    let item = fetch_article(
-        conn,
-        &FetchArticle {
-            article_id: params.article_id,
-            me: params.me.to_owned(),
-        },
-    );
-    let _ = Favorite::unfavorite(
-        conn,
-        &UnfavoriteAction {
-            user_id: params.me.id,
-            article_id: params.article_id,
-        },
-    );
-    item
-}
-
-pub fn fetch_favorites_count_by_article_id(
-    conn: &PgConnection,
-    _article_id: Uuid,
-) -> i64 {
-    use crate::schema::favorites;
-    use diesel::prelude::*;
-
-    let count = favorites::table
-        .filter(favorites::article_id.eq_all(_article_id))
-        .select(diesel::dsl::count(favorites::created_at))
-        .first::<i64>(conn)
-        .expect("could not get favorites count.");
-    count
-}
-
-pub fn fetch_favorited_article_ids_by_user_id(
-    conn: &PgConnection,
-    user_id: Uuid,
-) -> Vec<Uuid> {
-    use crate::schema::favorites;
-    use diesel::prelude::*;
-
-    let ids = favorites::table
-        .filter(favorites::user_id.eq(user_id))
-        .select(favorites::user_id)
-        .get_results::<Uuid>(conn)
-        .expect("could not get favorited article ids.");
-    ids
+#[derive(Clone)]
+pub struct FavoriteInfo {
+    pub is_favorited: bool,
+    pub favorites_count: i64,
 }

@@ -1,9 +1,8 @@
-
 use super::service;
 use crate::app::profile;
 use crate::middleware::auth::access_auth_user;
-use crate::AppState;
-use actix_web::{ web, HttpRequest, HttpResponse};
+use crate::middleware::state::AppState;
+use actix_web::{web, HttpRequest, HttpResponse};
 
 type UsernameSlug = String;
 
@@ -12,20 +11,17 @@ pub async fn show(
     req: HttpRequest,
     path: web::Path<UsernameSlug>,
 ) -> Result<HttpResponse, HttpResponse> {
-    
-    let me = access_auth_user(&req).expect("invalid user");
-    let conn = state
-        .pool
-        .get()
-        .expect("couldnt get db connection from pool");
+    let me = access_auth_user(&req)?;
+    let conn = state.get_conn()?;
     let _username = path.into_inner();
+
     let profile = service::fetch_by_name(
         &conn,
         &service::FetchProfileByName {
             me: me.to_owned(),
             username: _username,
         },
-    );
+    )?;
 
     let res = profile::response::ProfileResponse::from(profile);
     Ok(HttpResponse::Ok().json(res))
@@ -36,13 +32,10 @@ pub async fn follow(
     req: HttpRequest,
     path: web::Path<UsernameSlug>,
 ) -> Result<HttpResponse, HttpResponse> {
-    let user = access_auth_user(&req).expect("invalid user");
-    let conn = state
-        .pool 
-        .get()
-        .expect("couldnt get db connection from pool");
+    let user = access_auth_user(&req)?;
+    let conn = state.get_conn()?;
     let username = path.into_inner();
-    let profile = user.follow(&conn, &username).expect("couldnt follow user");
+    let profile = user.follow(&conn, &username)?;
     Ok(HttpResponse::Ok().json(profile))
 }
 
@@ -51,17 +44,9 @@ pub async fn unfollow(
     req: HttpRequest,
     path: web::Path<UsernameSlug>,
 ) -> Result<HttpResponse, HttpResponse> {
-
-    let user = access_auth_user(&req).expect("invalid user");
-    let conn = state
-        .pool
-        .get()
-        .expect("couldn't get db connection from pool");
-
+    let user = access_auth_user(&req)?;
+    let conn = state.get_conn()?;
     let username = path.into_inner();
-
-    let profile = user
-        .unfollow(&conn, &username)
-        .expect("couldn't unfollow user");
+    let profile = user.unfollow(&conn, &username)?;
     Ok(HttpResponse::Ok().json(profile))
 }
