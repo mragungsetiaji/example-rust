@@ -1,12 +1,13 @@
 use crate::app::article::model::Article;
 use crate::app::user::model::User;
+use crate::error::AppError;
 use crate::schema::comments;
 use chrono::NaiveDateTime;
 use diesel::pg::PgConnection;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Deserialize, Serialize, Queryable, Associations, Debug, Clone)]
+#[derive(Identifiable, Deserialize, Serialize, Queryable, Associations, Debug, Clone)]
 #[belongs_to(User, foreign_key = "author_id")]
 #[belongs_to(Article, foreign_key = "article_id")]
 #[table_name = "comments"]
@@ -26,21 +27,23 @@ pub struct CreateComment {
     pub author_id: Uuid,
     pub article_id: Uuid,
 }
-
 impl Comment {
-    pub fn create(conn: &PgConnection, params: &CreateComment) -> Self {
+    pub fn create(conn: &PgConnection, record: &CreateComment) -> Result<Self, AppError> {
         use diesel::prelude::*;
-        diesel::insert_into(comments::table)
-            .values(params)
-            .get_result::<Comment>(conn)
-            .expect("Error saving new comment")
+        let new_comment = diesel::insert_into(comments::table)
+            .values(record)
+            .get_result::<Comment>(conn)?;
+        Ok(new_comment)
     }
 
-    pub fn delete(conn: &PgConnection, comment_id: &Uuid)  {
+    pub fn delete(conn: &PgConnection, comment_id: &Uuid) -> Result<(), AppError> {
+        use crate::schema::comments;
         use crate::schema::comments::dsl::*;
         use diesel::prelude::*;
-        diesel::delete(comments.filter(id.eq(comment_id)))
-            .execute(conn)
-            .expect("Error deleting comment");
+        let _ = diesel::delete(comments)
+            .filter(comments::id.eq(comment_id))
+            .execute(conn)?;
+
+        Ok(())
     }
 }

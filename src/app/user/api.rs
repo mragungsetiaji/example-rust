@@ -1,33 +1,15 @@
-use crate::app::user::model::{ UpdatableUser, User };
-use crate::app::user::{ request, response };
+use crate::app::user::model::{UpdatableUser, User};
+use crate::app::user::{request, response};
 use crate::middleware::auth;
-use crate::AppState;
-use actix_web::{web, HttpResponse, HttpRequest};
+use crate::middleware::state::AppState;
+use actix_web::{web, HttpRequest, HttpResponse};
 
 pub async fn signin(
     state: web::Data<AppState>,
     form: web::Json<request::Signin>,
 ) -> Result<HttpResponse, HttpResponse> {
-    let conn = state
-        .pool
-        .get()
-        .expect("couldn't get db connection from pool");
-    let (user, token) =
-        // This line is creating a closure that calls User::signin with conn, 
-        // form.user.email, and form.user.password as arguments. The move keyword 
-        // is used to take ownership of these variables and move them into 
-        // the closure's environment.
-        web::block(move || User::signin(&conn, &form.user.email, &form.user.password))
-            // asynchronously wait for the blocking operation to complete.
-            .await
-            // This is error handling. If the web::block operation results in an error, 
-            // it is mapped to a different error type. 
-            .map_err(|e| {
-                eprintln!("{}", e);
-                HttpResponse::InternalServerError().json(e.to_string())
-            // The ? operator is then used to return early if an error occurred.
-            })?;
-
+    let conn = state.get_conn()?;
+    let (user, token) = User::signin(&conn, &form.user.email, &form.user.password)?;
     let res = response::UserResponse::from((user, token));
     Ok(HttpResponse::Ok().json(res))
 }
@@ -36,37 +18,22 @@ pub async fn signup(
     state: web::Data<AppState>,
     form: web::Json<request::Signup>,
 ) -> Result<HttpResponse, HttpResponse> {
-    let conn = state
-        .pool
-        .get()
-        .expect("couldn't get db connection from pool");
-    let (user, token) = web::block(move || {
-        User::signup(
-            &conn,
-            &form.user.email,
-            &form.user.username,
-            &form.user.password,
-        )
-    })
-    .await
-    .map_err(|e| {
-        eprintln!("{}", e);
-        HttpResponse::InternalServerError().json(e.to_string())
-    })?;
-
+    let conn = state.get_conn()?;
+    let (user, token) = User::signup(
+        &conn,
+        &form.user.email,
+        &form.user.username,
+        &form.user.password,
+    )?;
     let res = response::UserResponse::from((user, token));
     Ok(HttpResponse::Ok().json(res))
 }
 
 pub async fn me(req: HttpRequest) -> Result<HttpResponse, HttpResponse> {
-    let user = auth::access_auth_user(&req);
-
-    if let Some(user) = user {
-        let user = response::UserResponse::from((user.to_owned(), user.generate_token()));
-        Ok(HttpResponse::Ok().json(user))
-    } else {
-        Ok(HttpResponse::Ok().json({}))
-    }
+    let user = auth::access_auth_user(&req)?;
+    let token = user.generate_token()?;
+    let user = response::UserResponse::from((user, token));
+    Ok(HttpResponse::Ok().json(user))
 }
 
 pub async fn update(
@@ -74,27 +41,18 @@ pub async fn update(
     req: HttpRequest,
     form: web::Json<request::Update>,
 ) -> Result<HttpResponse, HttpResponse> {
-    let auth_user = auth::access_auth_user(&req).expect("invaild user");
-    let conn = state
-        .pool
-        .get()
-        .expect("couldn't get db connection from pool");
+    let auth_user = auth::access_auth_user(&req)?;
+    let conn = state.get_conn()?;
     let user = form.user.clone();
     let user = UpdatableUser {
         email: user.email,
         username: user.username,
         password: user.password,
-        bio: user.bio,
         image: user.image,
+        bio: user.bio,
     };
-    let user = web::block(move || User::update(&conn, auth_user.id, user))
-        .await
-        .map_err(|e| {
-            eprintln!("{}", e);
-            HttpResponse::InternalServerError().json(e.to_string())
-        })?;
-    
-    let token = &user.generate_token();
+    let user = User::update(&conn, auth_user.id, user)?;
+    let token = &user.generate_token()?;
     let res = response::UserResponse::from((user, token.to_string()));
     Ok(HttpResponse::Ok().json(res))
 }
