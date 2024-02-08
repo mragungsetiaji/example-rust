@@ -5,7 +5,7 @@ use crate::middleware;
 use crate::utils::token;
 use crate::middleware::state::AppState;
 use actix_service::{Service, Transform};
-use actix_web::{HttpMessage, App};
+use actix_web::HttpMessage;
 use actix_web::{
     dev::ServiceRequest,
     dev::ServiceResponse,

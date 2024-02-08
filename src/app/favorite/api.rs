@@ -1,4 +1,7 @@
-use super::response;
+use super::{
+    response,
+    service::{self, UnfavoriteService},
+};
 use crate::middleware::auth;
 use crate::middleware::state::AppState;
 use crate::utils::uuid;

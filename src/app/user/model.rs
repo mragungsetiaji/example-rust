@@ -140,12 +140,13 @@ impl User {
 }
 
 impl User {
-    pub fn generate_token(&self) -> String {
-        let now = Utc::now().timestamp_nanos_opt(); 
-        match now {
-            Some(n) => token::generate(self.id, n).expect("failed to generate token"),
-            _ => "".to_string(),
-        }
+    pub fn generate_token(&self) -> Result<String, AppError> {
+        let now = Utc::now();
+        let seconds = now.timestamp();
+        let nanos = now.timestamp_subsec_nanos();
+        let total_seconds = seconds as i64 + nanos as i64 / 1_000_000_000; // nanosecond -> second
+        let token = token::generate(self.id, total_seconds)?;
+        Ok(token)
     }
 }
 
@@ -163,6 +164,6 @@ pub struct UpdatableUser {
     pub email: Option<String>,
     pub username: Option<String>,
     pub password: Option<String>,
-    pub bio: Option<String>,
     pub image: Option<String>,
+    pub bio: Option<String>,
 }
