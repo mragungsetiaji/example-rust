@@ -15,15 +15,20 @@ mod utils;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
-    
-    HttpServer::new(move || {
+    std::env::set_var("RUST_LOG", "actix_web=trace");
+    env_logger::init();
+
+    let state = {
         let pool = utils::db::establish_connection();
+        middleware::state::AppState { pool }
+    };
+
+    HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
+            .app_data(actix_web::web::Data::new(state.clone()))
             .wrap(middleware::cors::cors())
             .wrap(middleware::auth::Authentication)
-            .app_data(middleware::state::AppState { pool })
             .configure(routes::api)
     })
     .bind(constants::BIND)?

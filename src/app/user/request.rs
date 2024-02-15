@@ -1,19 +1,21 @@
-use serde::{ Deserialize, Serialize };
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Signup {
-    pub user: SigupUser,
+    // SPEC: https://gothinkster.github.io/realworld/docs/specs/backend-specs/endpoints#registration
+    pub user: SignupUser,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct SigupUser {
-    pub email: String,
+pub struct SignupUser {
     pub username: String,
+    pub email: String,
     pub password: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Signin {
+    // SPEC: https://gothinkster.github.io/realworld/docs/specs/backend-specs/endpoints#authentication
     pub user: SigninUser,
 }
 
@@ -25,6 +27,7 @@ pub struct SigninUser {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Update {
+    // SPEC: https://gothinkster.github.io/realworld/docs/specs/backend-specs/endpoints#authentication
     pub user: UpdateUser,
 }
 
@@ -33,6 +36,6 @@ pub struct UpdateUser {
     pub email: Option<String>,
     pub username: Option<String>,
     pub password: Option<String>,
-    pub bio: Option<String>,
     pub image: Option<String>,
+    pub bio: Option<String>,
 }

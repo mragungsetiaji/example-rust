@@ -9,4 +9,3 @@ pub struct CreateCommentRequest {
 pub struct InnerComment {
     pub body: String,
 }
-

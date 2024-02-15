@@ -41,7 +41,7 @@ pub fn create(
     let profile = profile::service::fetch_profile_by_id(
         &conn,
         &FetchProfileById {
-            me: params.me.to_owned(),
+            user: params.me.to_owned(),
             id: article.author_id,
         },
     )?;
@@ -92,7 +92,6 @@ pub struct FetchArticlesList {
     pub favorited: Option<String>,
     pub offset: i64,
     pub limit: i64,
-    pub me: User,
 }
 
 type ArticlesCount = i64;
@@ -155,7 +154,9 @@ pub fn fetch_articles_list(
                 .into_iter()
                 .map(|(article, _)| article)
                 .collect::<Vec<_>>();
-            let tags_list = Tag::belonging_to(&articles_list).load::<Tag>(conn)?;
+            let tags_list = Tag::belonging_to(&articles_list)
+                .order(tags::name.asc())
+                .load::<Tag>(conn)?;
             let tags_list: Vec<Vec<Tag>> = tags_list.grouped_by(&articles_list);
             tags_list
         };
@@ -174,40 +175,17 @@ pub fn fetch_articles_list(
             .collect();
         let favorites_count_list = favorites_count_list?;
 
-        let favorited_article_ids =
-            favorite::service::fetch_favorited_article_ids_by_user_id(conn, params.me.id)?;
-
-        let is_favorited_by_me = |article: &Article| {
-            favorited_article_ids
-                .to_owned()
-                .into_iter()
-                .any(|_id| _id == article.id)
-        };
-
         let article_and_profile_list = {
-            let user_ids_list = article_and_user_list
-                .clone() // TODO: avoid clone
-                .into_iter()
-                .map(|(_, user)| user.id)
-                .collect::<Vec<_>>();
-
-            let follows_list = follows::table
-                .filter(follows::follower_id.eq(params.me.id))
-                .filter(follows::followee_id.eq_any(user_ids_list))
-                .get_results::<Follow>(conn)?;
-
-            let follows_list = follows_list.into_iter();
             let article_and_profile_list = article_and_user_list
                 .into_iter()
                 .map(|(article, user)| {
-                    let following = follows_list.clone().any(|item| item.followee_id == user.id);
                     let profile = Profile {
                         username: user.username,
                         bio: user.bio,
                         image: user.image,
-                        following: following.to_owned(),
+                        following: false, // NOTE: because not authz
                     };
-                    let is_favorited = is_favorited_by_me(&article);
+                    let is_favorited = false; // NOTE: because not authz
                     (article, profile, is_favorited)
                 })
                 .zip(favorites_count_list)
@@ -255,13 +233,54 @@ pub fn fetch_article(
     let profile = profile::service::fetch_profile_by_id(
         &conn,
         &FetchProfileById {
-            me: me.to_owned(),
+            user: me.to_owned(),
+            id: author.id,
+        },
+    )?;
+
+    let is_favorited = {
+        let favorited_article_ids =
+            favorite::service::fetch_favorited_article_ids_by_user_id(conn, params.me.id)?;
+
+        favorited_article_ids
+            .into_iter()
+            .any(|favarited_article_id| favarited_article_id == article.id)
+    };
+
+    let favorite_info = FavoriteInfo {
+        is_favorited,
+        favorites_count: favorite::service::fetch_favorites_count_by_article_id(conn, article.id)?,
+    };
+
+    let tags_list = Tag::belonging_to(&article).load::<Tag>(conn)?;
+
+    Ok((article, profile, favorite_info, tags_list))
+}
+
+pub struct FetchArticleBySlug {
+    pub article_title_slug: String,
+}
+pub fn fetch_article_by_slug(
+    conn: &PgConnection,
+    params: &FetchArticleBySlug,
+) -> Result<(Article, Profile, FavoriteInfo, Vec<Tag>), AppError> {
+    use diesel::prelude::*;
+    let FetchArticleBySlug { article_title_slug } = params;
+    let (article, author) = articles
+        .inner_join(users::table)
+        .filter(articles::slug.eq(article_title_slug))
+        .get_result::<(Article, User)>(conn)?;
+
+    let profile = profile::service::fetch_profile_by_id(
+        &conn,
+        &FetchProfileById {
+            user: author.to_owned(),
             id: author.id,
         },
     )?;
 
     let favorited_article_ids =
-        favorite::service::fetch_favorited_article_ids_by_user_id(conn, params.me.id)?;
+        favorite::service::fetch_favorited_article_ids_by_user_id(conn, author.id)?;
 
     let is_favorited = favorited_article_ids
         .to_owned()
@@ -402,7 +421,7 @@ pub fn fetch_following_articles(
 
 pub struct UpdateArticleService {
     pub me: User,
-    pub article_id: Uuid,
+    pub article_title_slug: String,
     pub slug: Option<String>,
     pub title: Option<String>,
     pub description: Option<String>,
@@ -414,7 +433,8 @@ pub fn update_article(
 ) -> Result<(Article, Profile, FavoriteInfo, Vec<Tag>), AppError> {
     let article = Article::update(
         &conn,
-        &params.article_id,
+        &params.article_title_slug,
+        &params.me.id,
         &UpdateArticle {
             slug: params.slug.to_owned(),
             title: params.title.to_owned(),
@@ -423,12 +443,12 @@ pub fn update_article(
         },
     )?;
 
-    let tag_list = Tag::fetch_list_by_article_id(&conn, params.article_id)?;
+    let tag_list = Tag::fetch_list_by_article_id(&conn, article.id)?;
 
     let profile = profile::service::fetch_profile_by_id(
         &conn,
         &FetchProfileById {
-            me: params.me.to_owned(),
+            user: params.me.to_owned(),
             id: article.author_id,
         },
     )?;
@@ -449,14 +469,20 @@ pub fn update_article(
     Ok((article, profile, favorite_info, tag_list))
 }
 
-pub fn delete_article(conn: &PgConnection, _article_id: Uuid) -> Result<(), AppError> {
-    // TODO: move this logic into service
+pub struct DeleteArticle {
+    pub slug: String,
+    pub author_id: Uuid,
+}
+pub fn delete_article(conn: &PgConnection, params: &DeleteArticle) -> Result<(), AppError> {
     use crate::schema::articles::dsl::*;
     use diesel::prelude::*;
 
-    // TODO: validation deletable auth_user.id == article.author_id ?
-
-    let _ = diesel::delete(articles.filter(id.eq(_article_id))).execute(conn)?;
+    let _ = diesel::delete(
+        articles
+            .filter(slug.eq(&params.slug))
+            .filter(author_id.eq(params.author_id)),
+    )
+    .execute(conn)?;
     // NOTE: references tag rows are deleted automatically by DELETE CASCADE
 
     Ok(())

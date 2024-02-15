@@ -1,13 +1,13 @@
 use super::model::Article;
 use super::service;
 use super::{request, response};
+use crate::error::AppError;
 use crate::middleware::auth;
 use crate::middleware::state::AppState;
 use actix_web::{web, HttpRequest, HttpResponse};
 use serde::Deserialize;
-use uuid::Uuid;
 
-type ArticleIdSlug = Uuid;
+type ArticleTitleSlug = String;
 
 #[derive(Deserialize)]
 pub struct ArticlesListQueryParameter {
@@ -20,10 +20,8 @@ pub struct ArticlesListQueryParameter {
 
 pub async fn index(
     state: web::Data<AppState>,
-    req: HttpRequest,
     params: web::Query<ArticlesListQueryParameter>,
-) -> Result<HttpResponse, HttpResponse> {
-    let auth_user = auth::access_auth_user(&req)?;
+) -> Result<HttpResponse, AppError> {
     let conn = state.get_conn()?;
     let offset = std::cmp::min(params.offset.to_owned().unwrap_or(0), 100);
     let limit = params.limit.unwrap_or(20);
@@ -36,7 +34,6 @@ pub async fn index(
             favorited: params.favorited.clone(),
             offset: offset,
             limit: limit,
-            me: auth_user,
         },
     )?;
 
@@ -54,7 +51,7 @@ pub async fn feed(
     state: web::Data<AppState>,
     req: HttpRequest,
     params: web::Query<FeedQueryParameter>,
-) -> Result<HttpResponse, HttpResponse> {
+) -> Result<HttpResponse, AppError> {
     let auth_user = auth::access_auth_user(&req)?;
     let conn = state.get_conn()?;
     let offset = std::cmp::min(params.offset.to_owned().unwrap_or(0), 100);
@@ -74,22 +71,14 @@ pub async fn feed(
 
 pub async fn show(
     state: web::Data<AppState>,
-    req: HttpRequest,
-    path: web::Path<ArticleIdSlug>,
-) -> Result<HttpResponse, HttpResponse> {
-    let auth_user = auth::access_auth_user(&req)?;
+    _req: HttpRequest,
+    path: web::Path<ArticleTitleSlug>,
+) -> Result<HttpResponse, AppError> {
     let conn = state.get_conn()?;
-    let article_id = path.into_inner();
-    let (article, profile, favorite_info, tags_list) = service::fetch_article(
-        &conn,
-        &service::FetchArticle {
-            article_id: article_id,
-            me: auth_user,
-        },
-    )?;
-
+    let article_title_slug = path.into_inner();
+    let (article, profile, favorite_info, tags_list) =
+        service::fetch_article_by_slug(&conn, &service::FetchArticleBySlug { article_title_slug })?;
     let res = response::SingleArticleResponse::from((article, profile, favorite_info, tags_list));
-
     Ok(HttpResponse::Ok().json(res))
 }
 
@@ -97,7 +86,7 @@ pub async fn create(
     state: web::Data<AppState>,
     req: HttpRequest,
     form: web::Json<request::CreateArticleRequest>,
-) -> Result<HttpResponse, HttpResponse> {
+) -> Result<HttpResponse, AppError> {
     let auth_user = auth::access_auth_user(&req)?;
     let conn = state.get_conn()?;
     let (article, profile, favorite_info, tag_list) = service::create(
@@ -119,26 +108,23 @@ pub async fn create(
 pub async fn update(
     state: web::Data<AppState>,
     req: HttpRequest,
-    path: web::Path<ArticleIdSlug>,
+    path: web::Path<ArticleTitleSlug>,
     form: web::Json<request::UpdateArticleRequest>,
-) -> Result<HttpResponse, HttpResponse> {
+) -> Result<HttpResponse, AppError> {
     let auth_user = auth::access_auth_user(&req)?;
     let conn = state.get_conn()?;
-    let article_id = path.into_inner();
-    // TODO: validation deletable auth_user.id == article.author_id ?
+    let article_title_slug = path.into_inner();
     let article_slug = &form
         .article
         .title
         .as_ref()
         .map(|_title| Article::convert_title_to_slug(_title));
 
-    // TODO: validation: slug is not empty
-
     let (article, profile, favorite_info, tag_list) = service::update_article(
         &conn,
         &service::UpdateArticleService {
             me: auth_user,
-            article_id,
+            article_title_slug,
             slug: article_slug.to_owned(),
             title: form.article.title.clone(),
             description: form.article.description.clone(),
@@ -152,12 +138,18 @@ pub async fn update(
 
 pub async fn delete(
     state: web::Data<AppState>,
-    // req: HttpRequest,
-    path: web::Path<ArticleIdSlug>,
-) -> Result<HttpResponse, HttpResponse> {
-    // let auth_user = auth::access_auth_user(&req)?;
+    req: HttpRequest,
+    path: web::Path<ArticleTitleSlug>,
+) -> Result<HttpResponse, AppError> {
+    let auth_user = auth::access_auth_user(&req)?;
     let conn = state.get_conn()?;
-    let article_id = path.into_inner();
-    let _ = service::delete_article(&conn, article_id)?;
+    let article_title_slug = path.into_inner();
+    let _ = service::delete_article(
+        &conn,
+        &service::DeleteArticle {
+            slug: article_title_slug,
+            author_id: auth_user.id,
+        },
+    )?;
     Ok(HttpResponse::Ok().json({}))
 }

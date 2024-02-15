@@ -1,4 +1,4 @@
-use serde::{ Deserialize, Serialize };
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct CreateArticleRequest {
@@ -6,6 +6,7 @@ pub struct CreateArticleRequest {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateArticleInner {
     pub title: String,
     pub description: String,
