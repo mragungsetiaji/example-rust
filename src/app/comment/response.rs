@@ -1,6 +1,6 @@
 use crate::app::comment::model::Comment;
 use crate::app::profile::model::Profile;
-use chrono::NaiveDateTime;
+use crate::utils::date::Iso8601;
 use serde::{Deserialize, Serialize};
 use std::convert::From;
 use uuid::Uuid;
@@ -22,8 +22,8 @@ impl From<(Comment, Profile)> for SingleCommentResponse {
                     image: profile.image,
                     following: profile.following,
                 },
-                created_at: comment.created_at,
-                updated_at: comment.updated_at,
+                created_at: Iso8601(comment.created_at),
+                updated_at: Iso8601(comment.updated_at),
             },
         }
     }
@@ -43,9 +43,9 @@ impl From<Vec<(Comment, Profile)>> for MultipleCommentsResponse {
                     let (comment, profile) = item;
                     InnerComment {
                         id: comment.id,
+                        created_at: Iso8601(comment.created_at),
+                        updated_at: Iso8601(comment.updated_at),
                         body: comment.body,
-                        created_at: comment.created_at,
-                        updated_at: comment.updated_at,
                         author: InnerAuthor {
                             username: profile.username,
                             bio: profile.bio,
@@ -59,14 +59,14 @@ impl From<Vec<(Comment, Profile)>> for MultipleCommentsResponse {
     }
 }
 
-
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InnerComment {
     pub id: Uuid,
+    pub created_at: Iso8601,
+    pub updated_at: Iso8601,
     pub body: String,
     pub author: InnerAuthor,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Serialize, Deserialize)]

@@ -1,6 +1,5 @@
 use crate::app::profile::model::Profile as ProfileModel;
-use serde::{ Deserialize, Serialize };
-
+use serde::{Deserialize, Serialize};
 use std::convert::From;
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ProfileResponse {

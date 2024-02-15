@@ -6,36 +6,54 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = { version = "3.3" }
 
+# Actix Web is a powerful, pragmatic, and extremely fast web framework for Rust
+actix-web = { version = "4" }
+
+# A safe, extensible ORM and Query Builder for PostgreSQL, SQLite, and MySQL
 diesel = { version = "1.4", features = ["r2d2", "postgres", "chrono", "uuidv07", "serde_json"] }
 
+# Create and decode JWTs in a strongly typed way.
 jsonwebtoken = { version = "7" }
 
+# A generic serialization/deserialization framework
 serde = { version = "1.0", features = ["derive"] }
 
+# A JSON serialization file format
 serde_json = { version = "1.0" }
 
-dotenv = "0.15.0"
+# A `dotenv` implementation for Rust
+dotenv = { version = "0.15" }
 
+# Date and time library for Rust
 chrono = { version = "0.4", features = ["serde"] }
 
+# A library to generate and parse UUIDs.
 uuid = { version = "0.8", features = ["serde", "v4"] }
 
+# Easily hash and verify passwords using bcrypt
 bcrypt = { version = "0.10.1" }
 
+# A lightweight logging facade for Rust
 log = { version = "0.4.14" }
 
-env_logger = "0.9.0"
+# A logging implementation for `log` which is configured via an environment variable.
+env_logger = { version = "0.9.0" }
 
+# Flexible concrete Error type built on std::error::Error
 anyhow = { version = "1.0" }
 
+# derive(Error)
 thiserror = { version = "1.0" }
 
+# An implementation of futures and streams featuring zero allocations, composability, and itera…
 futures = { version = "0.3" }
 
-actix-service = { version = "1.0.6" }
+# Service trait and combinators for representing asynchronous request/response operati…
+# actix-service = { version = "2" }
 
-actix-cors = { version = "0.5.4" }
+# Cross-Origin Resource Sharing (CORS) controls for Actix Web
+actix-cors = { version = "0.6.1" }
 
-convert_case = { version = "0.4.0"}
+# Convert strings into any case
+convert_case = { version = "0.4.0" }

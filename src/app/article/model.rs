@@ -1,27 +1,15 @@
 use crate::app::user::model::User;
 use crate::error::AppError;
-use crate::schema::articles::dsl::*;
 use crate::schema::articles;
+use crate::schema::articles::dsl::*;
 use crate::utils::converter;
-
 use chrono::NaiveDateTime;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::Insertable;
-use serde::{
-    Deserialize, Serialize
-};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-// Identifiable
-// This trait is used to mark a struct as representing a single row 
-// in a database table. This trait requires that your struct has 
-// a field named id or a tuple of fields which together form 
-// a composite primary key. The id field is typically of 
-// type i32 or Uuid and is often auto-incremented by the database. 
-// By deriving Identifiable, you can use methods provided 
-// by Diesel that require the struct to be identifiable by 
-// a unique key.
 #[derive(Identifiable, Queryable, Debug, Serialize, Deserialize, Associations, Clone)]
 #[belongs_to(User, foreign_key = "author_id")]
 #[table_name = "articles"]
@@ -41,18 +29,40 @@ impl Article {
         let article = diesel::insert_into(articles::table)
             .values(record)
             .get_result::<Article>(conn)?;
+
         Ok(article)
     }
 
-    pub fn update(conn: &PgConnection, article_id: &Uuid, record: &UpdateArticle) -> Result<Self, AppError> {
-        let article = diesel::update(articles.filter(id.eq(article_id)))
-            .set(record)
-            .get_result::<Article>(conn)?;
+    pub fn update(
+        conn: &PgConnection,
+        article_title_slug: &String,
+        _author_id: &Uuid,
+        record: &UpdateArticle,
+    ) -> Result<Self, AppError> {
+        let article = diesel::update(
+            articles
+                .filter(articles::slug.eq(article_title_slug))
+                .filter(articles::author_id.eq_all(_author_id)),
+        )
+        .set(record)
+        .get_result::<Article>(conn)?;
         Ok(article)
     }
 
     pub fn convert_title_to_slug(_title: &str) -> String {
         converter::to_kebab(_title)
+    }
+
+    pub fn fetch_by_slug_and_author_id(
+        conn: &PgConnection,
+        params: &FetchBySlugAndAuthorId,
+    ) -> Result<Self, AppError> {
+        use crate::schema::articles::dsl::*;
+        let item = articles
+            .filter(slug.eq_all(params.slug.to_owned()))
+            .filter(author_id.eq_all(params.author_id))
+            .first::<Self>(conn)?;
+        Ok(item)
     }
 }
 
@@ -73,4 +83,9 @@ pub struct UpdateArticle {
     pub title: Option<String>,
     pub description: Option<String>,
     pub body: Option<String>,
+}
+
+pub struct FetchBySlugAndAuthorId {
+    pub slug: String,
+    pub author_id: Uuid,
 }
