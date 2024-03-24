@@ -1,6 +1,4 @@
-// @generated automatically by Diesel CLI.
-
-diesel::table! {
+table! {
     articles (id) {
         id -> Uuid,
         author_id -> Uuid,
@@ -13,7 +11,7 @@ diesel::table! {
     }
 }
 
-diesel::table! {
+table! {
     comments (id) {
         id -> Uuid,
         article_id -> Uuid,
@@ -24,7 +22,7 @@ diesel::table! {
     }
 }
 
-diesel::table! {
+table! {
     favorites (id) {
         id -> Uuid,
         article_id -> Uuid,
@@ -34,7 +32,7 @@ diesel::table! {
     }
 }
 
-diesel::table! {
+table! {
     follows (follower_id, followee_id) {
         followee_id -> Uuid,
         follower_id -> Uuid,
@@ -43,7 +41,7 @@ diesel::table! {
     }
 }
 
-diesel::table! {
+table! {
     tags (id) {
         id -> Uuid,
         article_id -> Uuid,
@@ -53,7 +51,7 @@ diesel::table! {
     }
 }
 
-diesel::table! {
+table! {
     users (id) {
         id -> Uuid,
         email -> Text,
@@ -66,14 +64,14 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(articles -> users (author_id));
-diesel::joinable!(comments -> articles (article_id));
-diesel::joinable!(comments -> users (author_id));
-diesel::joinable!(favorites -> articles (article_id));
-diesel::joinable!(favorites -> users (user_id));
-diesel::joinable!(tags -> articles (article_id));
+joinable!(articles -> users (author_id));
+joinable!(comments -> articles (article_id));
+joinable!(comments -> users (author_id));
+joinable!(favorites -> articles (article_id));
+joinable!(favorites -> users (user_id));
+joinable!(tags -> articles (article_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
+allow_tables_to_appear_in_same_query!(
     articles,
     comments,
     favorites,
