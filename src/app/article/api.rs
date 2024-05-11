@@ -94,8 +94,7 @@ pub async fn create(
     let conn = state.get_conn()?;
     let (article, profile, favorite_info, tag_list) = service::create(
         &conn,
-        &service::CreateArticleSerivce {
-            author_id: auth_user.id,
+        &service::CreateArticleService {
             title: form.article.title.clone(),
             slug: Article::convert_title_to_slug(&form.article.title),
             description: form.article.description.clone(),
